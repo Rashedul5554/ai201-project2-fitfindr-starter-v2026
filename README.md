@@ -18,6 +18,11 @@
 >
 > **The rest of this file is your submission.** Fill it in as you go.
 
+### Milestone 1 — Setup and data exploration
+The environment check passed all 10 checks. I inspected six listings and the wardrobe fields. Listings include title, description, size, price, and style_tags. Prices are numbers, style_tags are lists, and sizes include formats such as S/M and XL (oversized).
+
+I ran the query 'vintage graphic tee under $30'. The starter reported that the planning loop is not built yet, which is the expected starting behavior.
+
 ---
 
 <!-- ─────────────────────────────────────────────────────────────────────────
