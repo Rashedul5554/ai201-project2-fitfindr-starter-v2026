@@ -19,9 +19,22 @@
 > **The rest of this file is your submission.** Fill it in as you go.
 
 ### Milestone 1 — Setup and data exploration
+
 The environment check passed all 10 checks. I inspected six listings and the wardrobe fields. Listings include title, description, size, price, and style_tags. Prices are numbers, style_tags are lists, and sizes include formats such as S/M and XL (oversized).
 
 I ran the query 'vintage graphic tee under $30'. The starter reported that the planning loop is not built yet, which is the expected starting behavior.
+
+## Planned Unit 3 Stretch Features
+
+These features are declared before implementation.
+
+- **Fourth tool — compare_prices:** Takes the selected listing and compares its price with other listings in the same category. Returns a dictionary containing the number of comparison items, their median price, and the selected item's difference from that median. If no comparison items exist, returns a count of zero and None for the median and difference. The agent will call this tool after selecting an item. Comparisons describe this dataset, not market value.
+
+- **Second planning-loop branch — empty wardrobe:** If the wardrobe has no items, the loop will request general styling advice. Otherwise, it will request combinations using the user's stored wardrobe. I will record runs showing both paths.
+
+- **Style memory:** Save user-provided wardrobe items locally between runs. I will demonstrate one run that stores a wardrobe change and a separate run that loads and uses that change.
+
+After implementation, I will add actual run output and explain what each feature changed.
 
 ---
 
@@ -64,24 +77,28 @@ I ran the query 'vintage graphic tee under $30'. The starter reported that the p
 
 ### `search_listings`
 
-- **What it does:**
-- **Inputs:** <!-- name and type each: `max_price` (float), not "a price" -->
-- **Returns:**
-- **When it has nothing:**
+- **What it does:** Searches the listings data for items matching the requested description, size, and maximum price.
+- **Inputs:** description (str), size (str or None, meaning no size filter), and max_price (float or None, meaning no price limit).
+- **Returns:** A list of matching listing dictionaries, preserving each listing’s id, title, description, category, style_tags, size, condition, price, colors, brand, and platform.
+- **When it has nothing:** Returns an empty list [] when no listings match.
+
+**Search matching rules:** Match whole keywords against the listing's title, description, and style_tags, ignoring capitalization. Count each matching query keyword once. Exclude listings with zero matches and sort by highest match count, keeping the original data order for ties. Return at most config.SEARCH_RESULT_LIMIT listings. When max_price is provided, include only prices less than or equal to it.
+
+**Size matching rules:** Ignore capitalization and parenthetical fit notes. Match complete size labels or slash-separated alternatives: M matches S/M, and XL matches XL (oversized). L does not match XL, and S does not match US 9. When size is None, skip size filtering.
 
 ### `suggest_outfit`
 
-- **What it does:**
-- **Inputs:**
-- **Returns:**
-- **When it has nothing:**
+- **What it does:** Uses the model to suggest one or two outfits combining the selected item with pieces from the user's wardrobe.
+- **Inputs:** new_item (dict containing a listing) and wardrobe (dict with an items key containing a list of wardrobe items).
+- **Returns:** A non-empty string with one or two outfit suggestions naming existing wardrobe pieces when available, or general styling advice when the wardrobe is empty.
+- **When it has nothing:** If the wardrobe's items list is empty, returns general styling advice for the selected item.
 
 ### `create_fit_card`
 
-- **What it does:**
-- **Inputs:**
-- **Returns:**
-- **When it has nothing:**
+- **What it does:** Uses the model to write a short social caption about the selected item and outfit.
+- **Inputs:** outfit (str containing outfit suggestions) and new_item (dict containing the selected listing).
+- **Returns:** A two-to-four-sentence caption mentioning the item, its price, and its platform once each, with a specific description of the style.
+- **When it has nothing:** If outfit is empty or contains only whitespace, returns "Cannot create a fit card because no outfit suggestion was provided."
 
 ---
 
@@ -98,7 +115,7 @@ I ran the query 'vintage graphic tee under $30'. The starter reported that the p
      The grader checks your code against what you claim here, so the file and
      function have to be real. -->
 
-**Branch rule:**
+**Branch rule:** If search_listings returns an empty list, save a message in the session suggesting that the user change the description, size, or budget, then stop without calling suggest_outfit or create_fit_card. Otherwise, save the first matching listing in the session as selected_item, pass that saved item to suggest_outfit, save the outfit suggestion, and use the saved suggestion and item to call create_fit_card. Save the resulting fit card in the session.
 
 **Where it lives:** `agent.py::run_agent`
 
