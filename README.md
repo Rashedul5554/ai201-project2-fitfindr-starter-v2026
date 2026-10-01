@@ -14,7 +14,8 @@
 > ```
 >
 > The three required tools have individual development runs recorded below.
-> The planning loop and bonus features still need implementation and verification.
+> The planning loop has been exercised with matching and empty-search queries.
+> The bonus features are still planned.
 >
 > **The rest of this file is your submission.** Fill it in as you go.
 
@@ -57,7 +58,7 @@ After implementation, I will add actual run output and explain what each feature
 
 ## What This Does
 
-FitFindr is being built to accept clothing requests such as "a vintage graphic tee under $30, size M," search a local mock listings dataset, suggest outfits, and write a short caption. The three required tools have been implemented and exercised individually. The full agent workflow and planned bonus features are not yet demonstrated; their output will be added after implementation.
+FitFindr accepts clothing requests such as "a vintage graphic tee under $30, size M" and searches a local mock listings dataset. It selects a matching item, suggests outfits using the supplied wardrobe, and generates a short caption. If no listings match, it stops and suggests changing the description, size, or budget. Price comparison, an explicit empty-wardrobe branch in the planning loop, and wardrobe persistence are planned additions.
 
 
 
@@ -115,23 +116,58 @@ FitFindr is being built to accept clothing requests such as "a vintage graphic t
      The grader checks your code against what you claim here, so the file and
      function have to be real. -->
 
-**Planned branch rule (not yet verified in the agent):** If search_listings returns an empty list, save a message in the session suggesting that the user change the description, size, or budget, then stop without calling suggest_outfit or create_fit_card. Otherwise, save the first matching listing in the session as selected_item, pass that saved item to suggest_outfit, save the outfit suggestion, and use the saved suggestion and item to call create_fit_card. Save the resulting fit card in the session.
+**Branch rule:** If search_listings returns an empty list, save a message in the session suggesting that the user change the description, size, or budget, then stop without calling suggest_outfit or create_fit_card. Otherwise, save the first matching listing in the session as selected_item, pass that saved item to suggest_outfit, save the outfit suggestion, and use the saved suggestion and item to call create_fit_card. Save the resulting fit card in the session.
 
 **Where it lives:** `agent.py::run_agent`
 
-**How the query is parsed:** Pending implementation review of agent.py.
+**How the query is parsed:** Regular expressions extract a price ceiling after “under,” “below,” or “up to,” and a size after “size.” Leading request phrases and commas are removed from the remaining text to form the search description. This parser supports these documented formats rather than arbitrary natural-language requests.
 
-**What moves through the session:** Planned: search results, selected item, outfit suggestion, and fit card. Exact session fields and actual behavior will be documented when the loop is implemented.
+**What moves through the session:** Parsed inputs are saved in `parsed`. Search results are saved in `search_results`, and the first result becomes `selected_item`. The outfit tool reads `selected_item` and `wardrobe` from the session and saves its response in `outfit_suggestion`. The caption tool reads `outfit_suggestion` and `selected_item`, then saves its response in `fit_card`. An empty search sets `error` and stops the loop. Empty outfit or caption responses also set `error`.
+
+**Loop control:** The loop advances through parse, search, outfit, and caption stages. It calls `trace.check_iterations()` on each iteration to enforce the configured iteration limit.
 
 ---
 
 ## Sample Run
 
-These are actual development runs copied from my terminal. They are individual tool checks, not the Unit 4 acceptance evaluation.
+These are actual development runs copied from my terminal, including a full agent query and individual tool checks. They are not the Unit 4 acceptance evaluation. The full agent query below reused two cached model responses.
 
 ### One full agent query
 
-Pending: connect the tools in `agent.py`, then record a complete query and its actual output.
+```text
+python app.py ask 'vintage graphic tee under $30, size M'
+
+  Found:    Y2K Baby Tee — Butterfly Print — $18.0 on depop
+
+  Outfit:   Here are two outfit suggestions featuring your Y2K Butterfly Print Baby Tee, styled using pieces from your wardrobe.
+
+### Outfit 1: Classic Y2K Streetwear
+* **Selected Item:** Y2K Baby Tee — Butterfly Print
+* **Wardrobe Piece:** Baggy straight-leg jeans, dark wash (`w_001`)
+* **Wardrobe Piece:** Chunky white sneakers (`w_007`)
+* **Wardrobe Piece:** Black crossbody bag (`w_010`)
+* **Optional (not part of wardrobe):** Silver chain necklace
+
+**Why they work together:**
+This look plays into classic early 2000s proportions. The fitted, cropped nature of the baby tee balances out the voluminous, high-waisted fit of the baggy dark wash jeans. The chunky white sneakers tie into the white base of the tee, while the black crossbody bag and optional silver accessories complete that effortless Y2K street style vibe.
+
+---
+
+### Outfit 2: Edgy Contrast
+* **Selected Item:** Y2K Baby Tee — Butterfly Print
+* **Wardrobe Piece:** Vintage black denim jacket (`w_006`)
+* **Wardrobe Piece:** Wide-leg khaki trousers (`w_002`)
+* **Wardrobe Piece:** Black combat boots (`w_008`)
+* **Optional (not part of wardrobe):** Wire-rimmed sunglasses
+
+**Why they work together:**
+While the baby tee leans cute and graphic, pairing it with the vintage black denim jacket and black combat boots adds a touch of grunge and edge. The wide-leg khaki trousers bring in neutral earth tones that anchor the pink, purple, and white colors of the butterfly graphic, creating a fun mix of soft and tough aesthetics.
+
+  Fit card: Channeling early 2000s proportions is so easy with this Y2K Baby Tee — Butterfly Print, listed on depop for $18.00. I love styling it with baggy straight-leg dark wash jeans and chunky white sneakers for a classic streetwear vibe. It's a fun and effortless look for everyday wear!
+
+0 model calls this session, 2 served from cache
+```
+
 
 ### search_listings — keyword and price filtering
 
@@ -278,7 +314,7 @@ The fresh result removed the future-release claim but still said "available now.
 ### Moment 1 — Implementing and checking search
 
 - **What I asked for:** I shared the starter files with ChatGPT and asked where to put the search implementation.
-- **What came back:** ChatGPT give keyword scoring, size matching, and price filtering code, then helped identify indentation errors from my screenshots.
+- **What came back:** ChatGPT provided keyword scoring, size matching, and price filtering code, then helped identify indentation errors from my screenshots.
 - **What I changed:** I inserted the implementation in tools.py, corrected its indentation, and ran the syntax and search checks. The actual outputs are recorded above.
 
 ### Moment 2 — Reviewing generated captions
@@ -289,7 +325,7 @@ The fresh result removed the future-release claim but still said "available now.
 
 ### Other AI assistance
 
-ChatGPT also helped draft the tool specifications, acceptance criteria 3–5 and the reasons under the criteria, and the outfit and caption implementations. It helped organize the terminal output into this README. The recorded outputs came from my terminal runs.
+ChatGPT also helped draft the tool specifications, bonus-feature plans, acceptance criteria 3–5 and the reasons under the criteria, and the outfit, caption, and planning-loop implementations. It helped organize the terminal output into this README. The recorded outputs came from my terminal runs.
 
 <!-- ═══════════════════════ UNIT 4 — THE TEST ═══════════════════════
 

@@ -13,6 +13,7 @@ Build and test your three tools in `tools.py` first. Then come here.
     python agent.py          runs both example paths below
 """
 
+import re
 import config
 import trace
 from tools import search_listings, suggest_outfit, create_fit_card
@@ -106,10 +107,110 @@ def run_agent(query: str, wardrobe: dict) -> dict:
         than a stack trace. The import is already at the top of this file.
     """
     session = new_session(query, wardrobe)
+    stage = "parse"
+    iterations = 0
 
-    # TODO: delete these two lines and build the loop.
-    session["error"] = "The planning loop isn't built yet — see the TODO in agent.py."
-    return session
+    while True:
+        iterations += 1
+        trace.check_iterations(iterations)
+
+        if stage == "parse":
+            description = session["query"]
+
+            price_match = re.search(
+                r"\b(?:under|below|up to)\s*\$?\s*(\d+(?:\.\d{1,2})?)",
+                description,
+                flags=re.IGNORECASE,
+            )
+            max_price = None
+            if price_match:
+                max_price = float(price_match.group(1))
+                description = (
+                    description[:price_match.start()]
+                    + " "
+                    + description[price_match.end():]
+                )
+
+            size_match = re.search(
+                r"\b(?:in\s+)?size\s+"
+                r"(W\d+\s+L\d+|US\s+\d+(?:\.\d+)?|"
+                r"[A-Za-z0-9]+(?:/[A-Za-z0-9]+)?)\b",
+                description,
+                flags=re.IGNORECASE,
+            )
+            size = None
+            if size_match:
+                size = size_match.group(1).strip()
+                description = (
+                    description[:size_match.start()]
+                    + " "
+                    + description[size_match.end():]
+                )
+
+            description = re.sub(
+                r"^\s*(?:looking for|find me|find|a|an)\b\s*",
+                "",
+                description,
+                flags=re.IGNORECASE,
+            )
+            description = re.sub(
+                r"^\s*(?:a|an)\b\s*",
+                "",
+                description,
+                flags=re.IGNORECASE,
+            )
+            description = " ".join(
+                description.replace(",", " ").split()
+            )
+
+            session["parsed"] = {
+                "description": description,
+                "size": size,
+                "max_price": max_price,
+            }
+            stage = "search"
+
+        elif stage == "search":
+            session["search_results"] = search_listings(
+                **session["parsed"]
+            )
+
+            if not session["search_results"]:
+                session["error"] = (
+                    "No matching listings were found. Try different "
+                    "description keywords, another size, or a higher budget."
+                )
+                return session
+
+            session["selected_item"] = session["search_results"][0]
+            stage = "outfit"
+
+        elif stage == "outfit":
+            session["outfit_suggestion"] = suggest_outfit(
+                session["selected_item"],
+                session["wardrobe"],
+            )
+
+            if not session["outfit_suggestion"].strip():
+                session["error"] = (
+                    "No outfit suggestion was generated. Please try again."
+                )
+                return session
+
+            stage = "caption"
+
+        elif stage == "caption":
+            session["fit_card"] = create_fit_card(
+                session["outfit_suggestion"],
+                session["selected_item"],
+            )
+
+            if not session["fit_card"].strip():
+                session["error"] = (
+                    "No caption was generated. Please try again."
+                )
+
+            return session
 
 
 # ── running it directly ───────────────────────────────────────────────────────
