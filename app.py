@@ -120,6 +120,19 @@ def _ask_one(query, wardrobe, use_trace):
         item = session["selected_item"] or {}
         print(f"  Found:    {item.get('title')} — ${item.get('price')} on {item.get('platform')}")
         print()
+        comparison = session.get("price_comparison")
+        if comparison is not None:
+            print("  Price comparison (same-category dataset listings):")
+            print(f"    Other listings: {comparison['comparison_count']}")
+            if comparison["median_price"] is None:
+                print("    No comparable listings were found.")
+            else:
+                print(f"    Median price: ${comparison['median_price']:.2f}")
+                print(
+                    "    Selected price minus median: "
+                    f"${comparison['price_difference']:+.2f}"
+                )
+            print()
         print(f"  Outfit:   {session['outfit_suggestion']}")
         print()
         print(f"  Fit card: {session['fit_card']}")

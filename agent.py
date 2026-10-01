@@ -16,7 +16,7 @@ Build and test your three tools in `tools.py` first. Then come here.
 import re
 import config
 import trace
-from tools import search_listings, suggest_outfit, create_fit_card
+from tools import search_listings, suggest_outfit, create_fit_card, compare_prices
 from generate import ModelUnavailable
 
 
@@ -41,6 +41,7 @@ def new_session(query: str, wardrobe: dict) -> dict:
         "parsed": {},                # description / size / max_price you pulled out of it
         "search_results": [],        # everything search_listings returned
         "selected_item": None,       # the one you chose — goes into suggest_outfit
+        "price_comparison": None,    # comparison returned by the fourth tool
         "wardrobe": wardrobe,        # the user's wardrobe
         "outfit_suggestion": None,   # what suggest_outfit returned
         "fit_card": None,            # what create_fit_card returned
@@ -65,7 +66,9 @@ def run_agent(query: str, wardrobe: dict) -> dict:
         the run ended early and the later fields will still be None.
 
     ─────────────────────────────────────────────────────────────────────────
-    TODO — build this, following the branch rule you wrote in Milestone 2.
+    Implemented workflow, following the branch rule from Milestone 2.
+    An additional compare stage saves compare_prices(selected_item) in
+    session["price_comparison"] before outfit generation.
 
       1. Start a session with new_session().
 
@@ -183,6 +186,12 @@ def run_agent(query: str, wardrobe: dict) -> dict:
                 return session
 
             session["selected_item"] = session["search_results"][0]
+            stage = "compare"
+
+        elif stage == "compare":
+            session["price_comparison"] = compare_prices(
+                session["selected_item"]
+            )
             stage = "outfit"
 
         elif stage == "outfit":
@@ -223,6 +232,7 @@ def _show(session: dict) -> None:
 
     item = session["selected_item"] or {}
     print(f"  found:    {item.get('title')} — ${item.get('price')} on {item.get('platform')}")
+    print(f"  price comparison: {session['price_comparison']}")
     print(f"  outfit:   {session['outfit_suggestion']}")
     print(f"  fit card: {session['fit_card']}")
 

@@ -20,6 +20,7 @@ That last line is what your loop branches on. "Returns a list" earns nothing —
 the description has to say what is *in* the list.
 """
 
+from statistics import median
 import json
 import re
 import config  # noqa: F401 — you'll use this in search_listings
@@ -246,3 +247,27 @@ def create_fit_card(outfit: str, new_item: dict) -> str:
     )
 
     return generate(prompt, system=system).strip()
+
+def compare_prices(new_item: dict) -> dict:
+    """Compare the selected item's price with other same-category listings."""
+    other_prices = [
+        listing["price"]
+        for listing in load_listings()
+        if listing["category"] == new_item["category"]
+        and listing["id"] != new_item["id"]
+    ]
+
+    if not other_prices:
+        return {
+            "comparison_count": 0,
+            "median_price": None,
+            "price_difference": None,
+        }
+
+    median_price = median(other_prices)
+
+    return {
+        "comparison_count": len(other_prices),
+        "median_price": round(median_price, 2),
+        "price_difference": round(new_item["price"] - median_price, 2),
+    }

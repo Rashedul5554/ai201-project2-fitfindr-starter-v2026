@@ -15,7 +15,8 @@
 >
 > The three required tools have individual development runs recorded below.
 > The planning loop has been exercised with matching and empty-search queries.
-> The bonus features are still planned.
+> Price comparison is implemented and demonstrated below.
+> The explicit empty-wardrobe loop branch and style memory are still planned.
 >
 > **The rest of this file is your submission.** Fill it in as you go.
 
@@ -27,7 +28,9 @@ I ran the query 'vintage graphic tee under $30'. The starter reported that the p
 
 ## Planned Unit 3 Stretch Features
 
-These features are declared before implementation.
+The following declarations were recorded before implementation. They are retained here as the original plan.
+
+**Current status:** Price comparison is implemented and has an agent run recorded under Sample Run. The explicit empty-wardrobe loop branch and style memory remain planned.
 
 - **Fourth tool — compare_prices:** Takes the selected listing and compares its price with other listings in the same category. Returns a dictionary containing the number of comparison items, their median price, and the selected item's difference from that median. If no comparison items exist, returns a count of zero and None for the median and difference. The agent will call this tool after selecting an item. Comparisons describe this dataset, not market value.
 
@@ -58,7 +61,7 @@ After implementation, I will add actual run output and explain what each feature
 
 ## What This Does
 
-FitFindr accepts clothing requests such as "a vintage graphic tee under $30, size M" and searches a local mock listings dataset. It selects a matching item, suggests outfits using the supplied wardrobe, and generates a short caption. If no listings match, it stops and suggests changing the description, size, or budget. Price comparison, an explicit empty-wardrobe branch in the planning loop, and wardrobe persistence are planned additions.
+FitFindr accepts clothing requests such as "a vintage graphic tee under $30, size M" and searches a local mock listings dataset. It selects a matching item, suggests outfits using the supplied wardrobe, and generates a short caption. If no listings match, it stops and suggests changing the description, size, or budget. It also compares the selected item with other same-category listings and displays their median price and the difference from the selected price. An explicit empty-wardrobe branch in the planning loop and wardrobe persistence remain planned.
 
 
 
@@ -101,6 +104,16 @@ FitFindr accepts clothing requests such as "a vintage graphic tee under $30, siz
 - **Returns:** A two-to-four-sentence caption mentioning the item, its price, and its platform once each, with a specific description of the style.
 - **When it has nothing:** If outfit is empty or contains only whitespace, returns "Cannot create a fit card because no outfit suggestion was provided."
 
+### `compare_prices`
+
+- **What it does:** Compares the selected item's price with other listings in the same category, excluding the selected listing.
+- **Inputs:** new_item (dict containing id, category, and price).
+- **Returns:** A dictionary with comparison_count (int), median_price (number), and price_difference (number: selected price minus median). A negative difference means the selected item is cheaper.
+- **When it has nothing:** Returns comparison_count of 0 and None for median_price and price_difference.
+
+This compares the local dataset, not market value. The agent calls it after selecting an item and saves the result in session["price_comparison"].
+
+
 ---
 
 ## Planning Loop
@@ -116,21 +129,66 @@ FitFindr accepts clothing requests such as "a vintage graphic tee under $30, siz
      The grader checks your code against what you claim here, so the file and
      function have to be real. -->
 
-**Branch rule:** If search_listings returns an empty list, save a message in the session suggesting that the user change the description, size, or budget, then stop without calling suggest_outfit or create_fit_card. Otherwise, save the first matching listing in the session as selected_item, pass that saved item to suggest_outfit, save the outfit suggestion, and use the saved suggestion and item to call create_fit_card. Save the resulting fit card in the session.
+**Branch rule:** If search_listings returns an empty list, save a message in the session suggesting that the user change the description, size, or budget, then stop without calling suggest_outfit or create_fit_card. Otherwise, save the first matching listing in the session as selected_item, call compare_prices with that item and save the comparison, then pass the saved item to suggest_outfit, save the outfit suggestion, and use the saved suggestion and item to call create_fit_card. Save the resulting fit card in the session.
 
 **Where it lives:** `agent.py::run_agent`
 
 **How the query is parsed:** Regular expressions extract a price ceiling after “under,” “below,” or “up to,” and a size after “size.” Leading request phrases and commas are removed from the remaining text to form the search description. This parser supports these documented formats rather than arbitrary natural-language requests.
 
-**What moves through the session:** Parsed inputs are saved in `parsed`. Search results are saved in `search_results`, and the first result becomes `selected_item`. The outfit tool reads `selected_item` and `wardrobe` from the session and saves its response in `outfit_suggestion`. The caption tool reads `outfit_suggestion` and `selected_item`, then saves its response in `fit_card`. An empty search sets `error` and stops the loop. Empty outfit or caption responses also set `error`.
+**What moves through the session:** Parsed inputs are saved in `parsed`. Search results are saved in `search_results`, and the first result becomes `selected_item`. The price-comparison tool reads `selected_item` and saves its result in `price_comparison`. The outfit tool reads `selected_item` and `wardrobe` from the session and saves its response in `outfit_suggestion`. The caption tool reads `outfit_suggestion` and `selected_item`, then saves its response in `fit_card`. An empty search sets `error` and stops the loop. Empty outfit or caption responses also set `error`.
 
-**Loop control:** The loop advances through parse, search, outfit, and caption stages. It calls `trace.check_iterations()` on each iteration to enforce the configured iteration limit.
+**Loop control:** The loop advances through parse, search, compare, outfit, and caption stages. It calls `trace.check_iterations()` on each iteration to enforce the configured iteration limit.
 
 ---
 
 ## Sample Run
 
-These are actual development runs copied from my terminal, including a full agent query and individual tool checks. They are not the Unit 4 acceptance evaluation. The full agent query below reused two cached model responses.
+### Fourth-tool bonus — agent price comparison
+
+```text
+python -m py_compile app.py
+python app.py ask 'vintage graphic tee under $30, size M'
+
+  Found:    Y2K Baby Tee — Butterfly Print — $18.0 on depop
+
+  Price comparison (same-category dataset listings):
+    Other listings: 14
+    Median price: $21.50
+    Selected price minus median: $-3.50
+
+  Outfit:   Here are two outfit suggestions featuring your Y2K Butterfly Print Baby Tee, styled using pieces from your wardrobe.
+
+### Outfit 1: Classic Y2K Streetwear
+* **Selected Item:** Y2K Baby Tee — Butterfly Print
+* **Wardrobe Piece:** Baggy straight-leg jeans, dark wash (`w_001`)
+* **Wardrobe Piece:** Chunky white sneakers (`w_007`)
+* **Wardrobe Piece:** Black crossbody bag (`w_010`)
+* **Optional (not part of wardrobe):** Silver chain necklace
+
+**Why they work together:**
+This look plays into classic early 2000s proportions. The fitted, cropped nature of the baby tee balances out the voluminous, high-waisted fit of the baggy dark wash jeans. The chunky white sneakers tie into the white base of the tee, while the black crossbody bag and optional silver accessories complete that effortless Y2K street style vibe.
+
+---
+
+### Outfit 2: Edgy Contrast
+* **Selected Item:** Y2K Baby Tee — Butterfly Print
+* **Wardrobe Piece:** Vintage black denim jacket (`w_006`)
+* **Wardrobe Piece:** Wide-leg khaki trousers (`w_002`)
+* **Wardrobe Piece:** Black combat boots (`w_008`)
+* **Optional (not part of wardrobe):** Wire-rimmed sunglasses
+
+**Why they work together:**
+While the baby tee leans cute and graphic, pairing it with the vintage black denim jacket and black combat boots adds a touch of grunge and edge. The wide-leg khaki trousers bring in neutral earth tones that anchor the pink, purple, and white colors of the butterfly graphic, creating a fun mix of soft and tough aesthetics.
+
+  Fit card: Channeling early 2000s proportions is so easy with this Y2K Baby Tee — Butterfly Print, listed on depop for $18.00. I love styling it with baggy straight-leg dark wash jeans and chunky white sneakers for a classic streetwear vibe. It's a fun and effortless look for everyday wear!
+
+0 model calls this session, 2 served from cache
+```
+
+The selected tee costs $18.00, which is $3.50 below the $21.50 median of 14 other same-category listings. This adds dataset price context to the agent output; it does not estimate market value.
+
+
+These are actual development runs copied from my terminal, including a full agent query and individual tool checks. They are not the Unit 4 acceptance evaluation. Both recorded full agent queries reused two cached model responses; the price comparison is calculated locally.
 
 ### One full agent query
 
@@ -325,7 +383,7 @@ The fresh result removed the future-release claim but still said "available now.
 
 ### Other AI assistance
 
-ChatGPT also helped draft the tool specifications, bonus-feature plans, acceptance criteria 3–5 and the reasons under the criteria, and the outfit, caption, and planning-loop implementations. It helped organize the terminal output into this README. The recorded outputs came from my terminal runs.
+ChatGPT also helped draft the tool specifications, bonus-feature plans, acceptance criteria 3–5 and the reasons under the criteria, and the outfit, caption, price-comparison, and planning-loop implementations, including the command-line price display. It helped organize the terminal output into this README. The recorded outputs came from my terminal runs.
 
 <!-- ═══════════════════════ UNIT 4 — THE TEST ═══════════════════════
 
