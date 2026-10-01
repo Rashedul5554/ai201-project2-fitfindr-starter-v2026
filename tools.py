@@ -20,6 +20,7 @@ That last line is what your loop branches on. "Returns a list" earns nothing —
 the description has to say what is *in* the list.
 """
 
+import re
 import config  # noqa: F401 — you'll use this in search_listings
 from generate import generate
 from utils.data_loader import load_listings
@@ -78,8 +79,50 @@ def search_listings(
     Test it from a terminal before you move on:
         python -c "from tools import search_listings; print(search_listings('graphic tee', max_price=30))"
     """
-    # TODO: replace this with your implementation
-    return []
+    def keywords(text: str) -> set[str]:
+        return set(re.findall(r"\w+", text.casefold()))
+
+    def size_labels(text: str) -> set[str]:
+        cleaned = re.sub(r"\([^)]*\)", "", text).casefold()
+        return {
+            " ".join(part.split())
+            for part in cleaned.split("/")
+            if part.strip()
+        }
+
+    query_words = keywords(description)
+    if not query_words:
+        return []
+
+    requested_sizes = size_labels(size) if size is not None else None
+    matches = []
+
+    for listing in load_listings():
+        if max_price is not None and listing["price"] > max_price:
+            continue
+
+        if requested_sizes is not None:
+            listing_sizes = size_labels(listing["size"])
+            if not requested_sizes.intersection(listing_sizes):
+                continue
+
+        searchable_text = " ".join([
+            listing["title"],
+            listing["description"],
+            *listing["style_tags"],
+        ])
+
+        score = len(query_words.intersection(keywords(searchable_text)))
+        if score > 0:
+            matches.append((score, listing))
+
+    # Equal scores keep their original order in the data.
+    matches.sort(key=lambda match: match[0], reverse=True)
+
+    return [
+        listing
+        for score, listing in matches[:config.SEARCH_RESULT_LIMIT]
+    ]
 
 
 # ── Tool 2: suggest_outfit ────────────────────────────────────────────────────
