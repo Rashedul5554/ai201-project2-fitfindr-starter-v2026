@@ -43,7 +43,7 @@ An empty search result is handled by a condition in my planning loop before outf
 
 ## 3. The selected item stays the same across tool calls
 
-Given a query that returns at least one listing, the first search result, session["selected_item"], and the new_item received by suggest_outfit must have identical field values in 5 of 5 trials. Each trial will record these values so they can be compared.
+Given a query that returns at least one listing, the first search result, session `selected_item`, and the `new_item` received by `suggest_outfit` must have identical field values in 5 of 5 trials. Each trial will record these values so they can be compared.
 
 **Why this target:**
 
