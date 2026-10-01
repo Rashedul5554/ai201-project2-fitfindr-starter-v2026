@@ -17,7 +17,7 @@
 > The planning loop has been exercised with matching and empty-search queries.
 > Price comparison is implemented and demonstrated below.
 > The explicit wardrobe-content branch has been exercised with existing and empty wardrobes.
-> Style memory remains planned.
+> Style memory saves wardrobe items between runs; a recorded check confirms the saved item reaches the outfit tool unchanged.
 >
 > **The rest of this file is your submission.** Fill it in as you go.
 
@@ -31,7 +31,7 @@ I ran the query 'vintage graphic tee under $30'. The starter reported that the p
 
 The following declarations were recorded before implementation. They are retained here as the original plan.
 
-**Current status:** Price comparison and the explicit wardrobe-content branch are implemented, with development runs recorded under Sample Run. Style memory remains planned; saving and reloading a wardrobe in a separate process has not been demonstrated.
+**Current status:** Price comparison and the explicit wardrobe-content branch are implemented, with development runs recorded under Sample Run. Style memory is also implemented: separate commands saved and loaded the wardrobe, and a development check confirmed that the added scarf reached `suggest_outfit` unchanged. This is one persistence check, not a five-trial acceptance result.
 
 - **Fourth tool — compare_prices:** Takes the selected listing and compares its price with other listings in the same category. Returns a dictionary containing the number of comparison items, their median price, and the selected item's difference from that median. If no comparison items exist, returns a count of zero and None for the median and difference. The agent will call this tool after selecting an item. Comparisons describe this dataset, not market value.
 
@@ -62,7 +62,7 @@ After implementation, I will add actual run output and explain what each feature
 
 ## What This Does
 
-FitFindr accepts clothing requests such as "a vintage graphic tee under $30, size M" and searches a local mock listings dataset. It selects a matching item, suggests outfits using the supplied wardrobe, and generates a short caption. If no listings match, it stops and suggests changing the description, size, or budget. It also compares the selected item with other same-category listings and displays their median price and the difference from the selected price. The planning loop chooses combinations from the supplied wardrobe when it contains items, or general styling advice when it is empty. Wardrobe persistence remains planned.
+FitFindr accepts clothing requests such as "a vintage graphic tee under $30, size M" and searches a local mock listings dataset. It selects a matching item, suggests outfits using the supplied wardrobe, and generates a short caption. If no listings match, it stops and suggests changing the description, size, or budget. It also compares the selected item with other same-category listings and displays their median price and the difference from the selected price. The planning loop chooses combinations from the supplied wardrobe when it contains items, or general styling advice when it is empty. Wardrobe changes can be saved locally and loaded by later queries.
 
 
 
@@ -140,6 +140,8 @@ This compares the local dataset, not market value. The agent calls it after sele
 
 **Loop control:** The loop advances through `parse`, `search`, `compare`, and `choose_styling`, then either `outfit` or `general_advice`, and finally `caption`. An empty search stops at the search stage. It calls `trace.check_iterations()` on each iteration to enforce the configured iteration limit.
 
+**Wardrobe persistence:** `app.py::cmd_wardrobe_add` loads the current wardrobe, adds an item with a unique ID, and calls `utils/data_loader.py::save_wardrobe` to save it in `data/my_wardrobe.json`. Normal queries load that file through `load_saved_wardrobe` and pass the wardrobe to `run_agent`. If no saved file exists, the example wardrobe is used. `--empty-wardrobe` uses the empty template for that query without overwriting the saved file.
+
 **Second branch — wardrobe contents:** In agent.py::run_agent, the choose_styling stage checks whether session["wardrobe"]["items"] contains any items. If it does, the loop sets styling_mode to wardrobe_combinations and moves to the outfit stage. Otherwise, it sets styling_mode to general_advice and moves to the general_advice stage. Both paths save the tool response in outfit_suggestion before continuing to the caption stage.
 
 ---
@@ -147,6 +149,115 @@ This compares the local dataset, not market value. The agent calls it after sele
 ## Sample Run
 
 These are actual development runs and clearly labeled excerpts from my terminal. They are not the Unit 4 acceptance evaluation.
+
+### Style memory — saved wardrobe used in a later run
+
+I saved a blue cotton scarf in one process, then loaded the wardrobe and ran a query in separate processes. The first save kept the ten example items and added the scarf.
+
+```text
+python app.py wardrobe-add --id my_scarf_001 --name "Blue cotton scarf" --category accessories --colors blue
+Saved Blue cotton scarf (my_scarf_001) to data/my_wardrobe.json.
+Wardrobe now contains 11 items.
+```
+
+`python app.py wardrobe` printed all 11 items. This is the added item's exact excerpt from that output:
+
+```json
+    {
+      "id": "my_scarf_001",
+      "name": "Blue cotton scarf",
+      "category": "accessories",
+      "colors": [
+        "blue"
+      ],
+      "style_tags": []
+    }
+```
+
+The subsequent query produced this output:
+
+```text
+python app.py ask 'vintage graphic tee under $30, size M'
+
+  Found:    Y2K Baby Tee — Butterfly Print — $18.0 on depop
+
+  Price comparison (same-category dataset listings):
+    Other listings: 14
+    Median price: $21.50
+    Selected price minus median: $-3.50
+
+  Outfit:   Here are two outfit suggestions featuring the Y2K Baby Tee with the butterfly print, using pieces from your wardrobe:
+
+### Outfit 1: Y2K Streetwear Contrast
+* **Selected Item:** Y2K Baby Tee — Butterfly Print
+* **Wardrobe Pieces:**
+  * **Baggy straight-leg jeans, dark wash** (`w_001`)
+  * **Vintage black denim jacket** (`w_006`)
+  * **Chunky white sneakers** (`w_007`)
+  * **Black crossbody bag** (`w_010`)
+* **Why it works:** This look leans into classic early-2000s proportions by pairing the fitted, cropped silhouette of the baby tee with the relaxed, low-to-mid hip drape of the baggy dark wash jeans. Layering theslightly cropped black denim jacket on top adds texture and edge, while the chunky white sneakers and black crossbody bag tie the retro streetwear aesthetic together.
+
+---
+
+### Outfit 2: Casual Earth-Tone Mix
+* **Selected Item:** Y2K Baby Tee — Butterfly Print
+* **Wardrobe Pieces:**
+  * **Wide-leg khaki trousers** (`w_002`)
+  * **Brown leather belt** (`w_009`)
+  * **Chunky white sneakers** (`w_007`)
+* **Optional (Not part of supplied wardrobe):** *Retro pastel pink shoulder bag*
+* **Why it works:** The pink and purple butterfly graphic on the baby tee pops nicely against the neutral khaki of the wide-leg trousers. The fitted crop of the tee balances the looser volume of the trousers, andadding the brown leather belt pulls the look together with a neat, intentional finish. Chunky white sneakers keep the outfit grounded and casual.
+
+  Fit card: Channel early-2000s proportions by pairing the Y2K Baby Tee — Butterfly Print with baggy straight-leg dark wash jeans and a vintage black denim jacket for added edge. This fitted crop top is availablefor $18.00 on depop. Finish the retro streetwear look with chunky white sneakers and a black crossbody bag.
+
+2 model calls this session, 1476 prompt + 447 output tokens
+```
+
+I also observed the wardrobe passed to `suggest_outfit`, using a temporary wrapper that copied the input and then called the original function. The check compared the saved scarf against the item received by the tool:
+
+```python
+from copy import deepcopy
+from unittest.mock import patch
+import agent
+from utils.data_loader import load_saved_wardrobe
+
+wardrobe = load_saved_wardrobe()
+saved_item = next(
+    item for item in wardrobe["items"]
+    if item["id"] == "my_scarf_001"
+)
+received = []
+original = agent.suggest_outfit
+
+def capture(new_item, wardrobe):
+    received.append(deepcopy(wardrobe))
+    return original(new_item, wardrobe)
+
+with patch.object(agent, "suggest_outfit", side_effect=capture):
+    session = agent.run_agent(
+        "vintage graphic tee under $30, size M", wardrobe
+    )
+
+assert received, "The outfit tool was not called."
+tool_item = next(
+    item for item in received[0]["items"]
+    if item["id"] == "my_scarf_001"
+)
+assert tool_item == saved_item, "The saved item's fields changed."
+print("PASS: The saved scarf reached suggest_outfit unchanged.")
+print("Saved item:", saved_item)
+print("Tool received:", tool_item)
+print("Agent error:", session["error"])
+```
+
+```text
+PASS: The saved scarf reached suggest_outfit unchanged.
+Saved item: {'id': 'my_scarf_001', 'name': 'Blue cotton scarf', 'category': 'accessories', 'colors': ['blue'], 'style_tags': []}
+Tool received: {'id': 'my_scarf_001', 'name': 'Blue cotton scarf', 'category': 'accessories', 'colors': ['blue'], 'style_tags': []}
+Agent error: None
+```
+
+The saved item reached the outfit tool unchanged. The model did not select the scarf in the recorded outfit, so this evidence establishes persistence and delivery to the tool, not that the scarf changed the recommendation. This is one development check; the five trials for acceptance criterion 5 are still pending. The generated text above is preserved as received, including spacing errors and its availability wording.
 
 ### Second-branch bonus — existing and empty wardrobes
 
@@ -239,7 +350,7 @@ While the baby tee leans cute and graphic, pairing it with the vintage black den
 The selected tee costs $18.00, which is $3.50 below the $21.50 median of 14 other same-category listings. This adds dataset price context to the agent output; it does not estimate market value.
 
 
-These are actual development runs copied from my terminal, including a full agent query and individual tool checks. They are not the Unit 4 acceptance evaluation. Both recorded full agent queries reused two cached model responses; the price comparison is calculated locally.
+These are actual development runs copied from my terminal, including a full agent query and individual tool checks. They are not the Unit 4 acceptance evaluation. The two earlier full agent queries shown in the price-comparison and pre-comparison sections reused two cached model responses; the price comparison is calculated locally.
 
 ### Earlier full agent query — before price comparison
 
@@ -434,7 +545,7 @@ The fresh result removed the future-release claim but still said "available now.
 
 ### Other AI assistance
 
-ChatGPT also helped draft the tool specifications, bonus-feature plans, acceptance criteria 3–5 and the reasons under the criteria, and the outfit, caption, price-comparison, and planning-loop implementations, including the command-line price display and the explicit wardrobe-content branch. It helped organize the terminal output into this README. The recorded outputs came from my terminal runs.
+ChatGPT also helped draft the tool specifications, bonus-feature plans, acceptance criteria 3–5 and the reasons under the criteria, and the outfit, caption, price-comparison, and planning-loop implementations, including the command-line price display and the explicit wardrobe-content branch. It also helped implement wardrobe saving and loading, update the command-line interface, and write the saved-item input check. It helped organize the terminal output into this README. The recorded outputs came from my terminal runs.
 
 <!-- ═══════════════════════ UNIT 4 — THE TEST ═══════════════════════
 

@@ -85,6 +85,61 @@ def get_empty_wardrobe() -> dict:
     """
     return _wardrobe("empty_wardrobe")
 
+def save_wardrobe(wardrobe: dict) -> None:
+    """Save a wardrobe so it can be used in another program run."""
+    if not isinstance(wardrobe, dict):
+        raise ValueError("The wardrobe must be a dictionary.")
+
+    items = wardrobe.get("items")
+    if not isinstance(items, list):
+        raise ValueError("The wardrobe must contain an items list.")
+
+    seen_ids = set()
+    for item in items:
+        if not isinstance(item, dict):
+            raise ValueError("Each wardrobe item must be a dictionary.")
+
+        item_id = item.get("id")
+        if not isinstance(item_id, str) or not item_id.strip():
+            raise ValueError("Each wardrobe item needs a non-empty string ID.")
+
+        if item_id in seen_ids:
+            raise ValueError(f"Duplicate wardrobe item ID: {item_id}")
+        seen_ids.add(item_id)
+
+    # Convert before opening the file so invalid data cannot erase a save.
+    contents = json.dumps(wardrobe, indent=2, ensure_ascii=False)
+    path = os.path.join(_DATA_DIR, "my_wardrobe.json")
+    temporary_path = path + ".tmp"
+
+    with open(temporary_path, "w", encoding="utf-8") as f:
+        f.write(contents)
+        f.write("\n")
+
+    os.replace(temporary_path, path)
+
+
+def load_saved_wardrobe() -> dict:
+    """Load the saved wardrobe, or the example if no save exists."""
+    path = os.path.join(_DATA_DIR, "my_wardrobe.json")
+
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            wardrobe = json.load(f)
+    except FileNotFoundError:
+        return get_example_wardrobe()
+
+    if not isinstance(wardrobe, dict):
+        raise ValueError("The saved wardrobe must be a dictionary.")
+
+    if not isinstance(wardrobe.get("items"), list):
+        raise ValueError("The saved wardrobe must contain an items list.")
+
+    if not all(isinstance(item, dict) for item in wardrobe["items"]):
+        raise ValueError("Each saved wardrobe item must be a dictionary.")
+
+    return wardrobe
+
 
 # --- Quick sanity check ---
 if __name__ == "__main__":

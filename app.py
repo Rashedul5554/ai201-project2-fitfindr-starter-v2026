@@ -6,6 +6,8 @@ FitFindr — command line.
     python app.py ask                     keep asking until you quit
     python app.py ask --empty-wardrobe    run as a user with nothing saved
     python app.py listings                browse the data  (Milestone 1)
+    python app.py wardrobe               show the saved wardrobe (example if none)
+    python app.py wardrobe-add --id my_001 --name "Blue scarf" --category accessories
     python app.py fields                  what fields a listing has
     python app.py examples                queries worth trying, including a dud
 
@@ -149,10 +151,10 @@ def _ask_one(query, wardrobe, use_trace):
 
 
 def cmd_ask(args):
-    from utils.data_loader import get_example_wardrobe, get_empty_wardrobe
+    from utils.data_loader import load_saved_wardrobe, get_empty_wardrobe
     import generate
 
-    wardrobe = get_empty_wardrobe() if args.empty_wardrobe else get_example_wardrobe()
+    wardrobe = get_empty_wardrobe() if args.empty_wardrobe else load_saved_wardrobe()
     if args.empty_wardrobe:
         print("(running with an empty wardrobe)")
 
@@ -174,6 +176,40 @@ def cmd_ask(args):
         print(generate.usage())
 
 
+def cmd_wardrobe(args):
+    """Display the wardrobe that normal queries will use."""
+    import json
+    from utils.data_loader import load_saved_wardrobe
+
+    print(json.dumps(load_saved_wardrobe(), indent=2, ensure_ascii=False))
+
+
+def cmd_wardrobe_add(args):
+    """Add an item without replacing existing wardrobe items."""
+    from utils.data_loader import load_saved_wardrobe, save_wardrobe
+
+    item_id = args.id.strip()
+    name = args.name.strip()
+    if not item_id or not name:
+        raise ValueError("Item ID and name cannot be blank.")
+
+    wardrobe = load_saved_wardrobe()
+    if any(item.get("id") == item_id for item in wardrobe["items"]):
+        raise ValueError(f"Item ID {item_id!r} already exists. Choose a new ID.")
+
+    item = {
+        "id": item_id,
+        "name": name,
+        "category": args.category,
+        "colors": args.colors,
+        "style_tags": args.style_tags,
+    }
+    wardrobe["items"].append(item)
+    save_wardrobe(wardrobe)
+    print(f"Saved {name} ({item_id}) to data/my_wardrobe.json.")
+    print(f"Wardrobe now contains {len(wardrobe['items'])} items.")
+
+
 def build_parser():
     parser = argparse.ArgumentParser(
         prog="app.py",
@@ -193,6 +229,20 @@ def build_parser():
 
     p_ex = sub.add_parser("examples", help="queries worth trying")
     p_ex.set_defaults(func=cmd_examples)
+
+    p_wardrobe = sub.add_parser("wardrobe", help="show the wardrobe used for queries")
+    p_wardrobe.set_defaults(func=cmd_wardrobe)
+
+    p_add = sub.add_parser("wardrobe-add", help="add and save a wardrobe item")
+    p_add.add_argument("--id", required=True, help="unique item ID")
+    p_add.add_argument("--name", required=True, help="item description")
+    p_add.add_argument(
+        "--category", required=True,
+        choices=["tops", "bottoms", "outerwear", "shoes", "accessories"],
+    )
+    p_add.add_argument("--colors", nargs="*", default=[])
+    p_add.add_argument("--style-tags", nargs="*", default=[])
+    p_add.set_defaults(func=cmd_wardrobe_add)
 
     p_ask = sub.add_parser("ask", help="run the agent")
     p_ask.add_argument("query", nargs="?")
