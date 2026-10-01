@@ -13,8 +13,8 @@
 > python app.py ask 'vintage graphic tee under $30'
 > ```
 >
-> All three tools are stubs, so that last command will do nothing useful yet.
-> That's the starting position.
+> The three required tools have individual development runs recorded below.
+> The planning loop and bonus features still need implementation and verification.
 >
 > **The rest of this file is your submission.** Fill it in as you go.
 
@@ -57,7 +57,7 @@ After implementation, I will add actual run output and explain what each feature
 
 ## What This Does
 
-<!-- Three or four sentences: what a user asks for, and what they get back. -->
+FitFindr is being built to accept clothing requests such as "a vintage graphic tee under $30, size M," search a local mock listings dataset, suggest outfits, and write a short caption. The three required tools have been implemented and exercised individually. The full agent workflow and planned bonus features are not yet demonstrated; their output will be added after implementation.
 
 
 
@@ -115,69 +115,181 @@ After implementation, I will add actual run output and explain what each feature
      The grader checks your code against what you claim here, so the file and
      function have to be real. -->
 
-**Branch rule:** If search_listings returns an empty list, save a message in the session suggesting that the user change the description, size, or budget, then stop without calling suggest_outfit or create_fit_card. Otherwise, save the first matching listing in the session as selected_item, pass that saved item to suggest_outfit, save the outfit suggestion, and use the saved suggestion and item to call create_fit_card. Save the resulting fit card in the session.
+**Planned branch rule (not yet verified in the agent):** If search_listings returns an empty list, save a message in the session suggesting that the user change the description, size, or budget, then stop without calling suggest_outfit or create_fit_card. Otherwise, save the first matching listing in the session as selected_item, pass that saved item to suggest_outfit, save the outfit suggestion, and use the saved suggestion and item to call create_fit_card. Save the resulting fit card in the session.
 
 **Where it lives:** `agent.py::run_agent`
 
-**How the query is parsed:** <!-- regex, string splitting, or asking the model — say which -->
+**How the query is parsed:** Pending implementation review of agent.py.
 
-**What moves through the session:** <!-- which fields, in what order -->
+**What moves through the session:** Planned: search results, selected item, outfit suggestion, and fit card. Exact session fields and actual behavior will be documented when the loop is implemented.
 
 ---
 
 ## Sample Run
 
-<!-- Two things go here.
+These are actual development runs copied from my terminal. They are individual tool checks, not the Unit 4 acceptance evaluation.
 
-     1. One FULL query and its output, pasted as text.
-     2. Your three per-tool terminal tests — the command and what it printed. -->
+### One full agent query
 
-**One full query**
+Pending: connect the tools in `agent.py`, then record a complete query and its actual output.
 
-```
-$ python app.py ask '...'
+### search_listings — keyword and price filtering
 
-```
-
-**The three tools, tested one at a time**
-
-```
+```text
 $ python -c "from tools import search_listings; print(search_listings('graphic tee', max_price=30))"
-
+[{'id': 'lst_002', 'title': 'Y2K Baby Tee — Butterfly Print', 'description': 'Super cute early 2000s baby tee with butterfly graphic. Fitted crop length. Tag says medium but fits like a small.', 'category': 'tops', 'style_tags': ['y2k', 'vintage', 'graphic tee', 'cottagecore'], 'size': 'S/M', 'condition': 'excellent', 'price': 18.0, 'colors': ['white', 'pink', 'purple'], 'brand': None, 'platform': 'depop'}, {'id': 'lst_006', 'title': 'Graphic Tee — 2003 Tour Bootleg Style', 'description': 'Vintage-style bootleg tee with faded graphic. Slightly boxy fit. 100% cotton, soft and worn-in.', 'category': 'tops', 'style_tags': ['graphic tee', 'vintage', 'grunge', 'streetwear', 'band tee'], 'size': 'L', 'condition': 'good', 'price': 24.0, 'colors': ['black'], 'brand': None, 'platform': 'depop'}, {'id': 'lst_017', 'title': 'Mesh Long-Sleeve Top — Black', 'description': 'Sheer black mesh long-sleeve. Great for layering under a graphic tee or over a bralette. Stretchy material, fits true to size.', 'category': 'tops', 'style_tags': ['y2k', 'grunge', 'goth', 'layering'], 'size': 'S/M', 'condition': 'excellent', 'price': 15.0, 'colors': ['black'], 'brand': None, 'platform': 'depop'}, {'id': 'lst_033', 'title': 'Vintage Band Tee — Faded Grey', 'description': 'Faded grey band-style tee with distressed graphic. Crew neck. Fits boxy. Well-loved but no holes or major damage.', 'category': 'tops', 'style_tags': ['vintage', 'grunge', 'band tee', 'graphic tee', 'streetwear'], 'size': 'L', 'condition': 'fair', 'price': 19.0, 'colors': ['grey', 'charcoal'], 'brand': None, 'platform': 'depop'}, {'id': 'lst_011', 'title': 'Low-Rise Cargo Pants — Khaki', 'description': 'Y2K era low-rise cargo pants. Lots of pockets. Khaki color, slightly distressed at the hems. Great for layering with a long tee.', 'category': 'bottoms', 'style_tags': ['y2k', 'cargo', '2000s', 'streetwear'], 'size': 'W29', 'condition': 'fair','price': 27.0, 'colors': ['khaki', 'tan'], 'brand': None, 'platform': 'poshmark'}, {'id': 'lst_015', 'title': 'Vintage Graphic Hoodie — Faded Black', 'description': 'Faded black pullover hoodie with barely-visible vintage graphic on the chest. Cozy interior. Some pilling but adds to the worn-in look.', 'category': 'tops', 'style_tags': ['vintage', 'grunge', 'graphic', 'streetwear'], 'size': 'L', 'condition': 'fair', 'price': 26.0, 'colors': ['black', 'charcoal'], 'brand': None, 'platform': 'depop'}]
 ```
 
-```
-$ python -c "from tools import suggest_outfit; ..."
+### search_listings — no matches
 
+```text
+$ python -c "from tools import search_listings; print(search_listings('zzzznomatch', max_price=5))"
+[]
 ```
 
-```
-$ python -c "from tools import create_fit_card; ..."
+### search_listings — size filtering
 
+```text
+$ python -c "from tools import search_listings; print([(item['title'], item['size'], item['price']) for item in search_listings('graphic tee', size='M', max_price=30)])"
+[('Y2K Baby Tee — Butterfly Print', 'S/M', 18.0), ('Mesh Long-Sleeve Top — Black', 'S/M', 15.0)]
 ```
+
+The mesh top also matches because its description contains the search keywords. This search ranks keyword overlap; it does not determine whether the listing itself is a tee.
+
+### suggest_outfit — initial development result
+
+```text
+$ python -c "from tools import suggest_outfit; from utils.data_loader import get_example_wardrobe, load_listings; print(suggest_outfit(load_listings()[0], get_example_wardrobe()))"
+None
+```
+
+This earlier run returned None. The later run below returned outfit suggestions; this log alone does not establish the cause of the earlier result.
+
+### suggest_outfit — example wardrobe
+
+```text
+$ python -c "from tools import suggest_outfit; from utils.data_loader import get_example_wardrobe, load_listings; print(suggest_outfit(load_listings()[0], get_example_wardrobe()))"
+Here are two outfit suggestions featuring your Vintage Levi's 501 Jeans:
+
+### Outfit 1: Casual Streetwear & Basics
+* **Selected Item:** Vintage Levi's 501 Jeans — Medium Wash
+* **Wardrobe Pieces Used:** 
+  * **White ribbed tank top** (w_003)
+  * **Chunky white sneakers** (w_007)
+  * **Black crossbody bag** (w_010)
+* **Optional (Not part of supplied wardrobe):** A simple silver chain necklace.
+
+**Why they work together:** 
+This is a classic, effortless combination. The fitted white ribbed tank top contrasts nicely with the straight-leg fit of the vintage Levi's, creating a balanced silhouette. The chunky white sneakers tie in with the white top for a cohesive look, while the black crossbody bag adds a practical, minimal touch that fits the streetwear vibe of the jeans.
+
+---
+
+### Outfit 2: Cozy & Edgy Layering
+* **Selected Item:** Vintage Levi's 501 Jeans — Medium Wash
+* **Wardrobe Pieces Used:** 
+  * **Oversized grey crewneck sweatshirt** (w_004)
+  * **Black combat boots** (w_008)
+  * **Brown leather belt** (w_009)
+* **Optional (Not part of supplied wardrobe):** A plain white t-shirt to layer underneath the crewneck for a peek-of-white detail.
+
+**Why they work together:**
+This outfit plays with proportions by pairing the structured, straight-leg denim with an oversized grey crewneck sweatshirt. Adding the brown leather belt helps define the waist and breaks up the tones of the grey top and blue jeans. Finally, the black combat boots ground the outfit with a touch of grunge, complementing the vintage, broken-in aesthetic of the 501s.
+```
+
+### suggest_outfit — empty wardrobe
+
+```text
+$ python -c "from tools import suggest_outfit; from utils.data_loader import get_empty_wardrobe, load_listings; print(suggest_outfit(load_listings()[0], get_empty_wardrobe()))"
+Here are two ways to style the **Vintage Levi's 501 Jeans (Medium Wash)**:
+
+### Look 1: Casual & Classic Streetwear
+Lean into the vintage roots of the jeans with a relaxed, effortless everyday outfit. 
+* **Top:** A crisp white crewneck t-shirt or a vintage band tee.
+* **Outerwear:** An oversized black or dark brown leather biker jacket.
+* **Footwear:** Classic canvas sneakers (like white Converse or black-and-white Vans).
+* **Accessories:** A simple black leather belt and a canvas tote bag.
+* **Color Palette:** White, black, and medium blue indigo.
+
+### Look 2: Smart-Casual Prep
+Dress up the medium-wash denim by pairing it with tailored, structured pieces.
+* **Top:** A light blue or white button-down oxford shirt, tucked in loosely.
+* **Layer:** A neutral-toned knit sweater (like oatmeal, camel, or grey) draped over the shoulders.
+* **Footwear:** Leather loafers or suede Chelsea boots.
+* **Accessories:** A minimalist silver watch and a structured leather belt matching the shoes.
+* **Color Palette:** Oatmeal, camel, white, and shades of blue.
+```
+
+### create_fit_card — initial caption
+
+```text
+$ python -c "from tools import create_fit_card; from utils.data_loader import load_listings; print(create_fit_card('Pair with a white ribbed tank top and chunky white sneakers.', load_listings()[0]))"
+Nothing beats the timeless look of a great pair of worn-in denim, and these Vintage Levi's 501 Jeans — Medium Wash have that ideal laid-back vibe. I love styling them with a simple white ribbed tank top and chunky white sneakers for an effortless weekend outfit. Grab these today on depop for just $38.00 before they're gone!
+```
+
+### create_fit_card — whitespace-only outfit
+
+```text
+$ python -c "from tools import create_fit_card; from utils.data_loader import load_listings; print(create_fit_card('   ', load_listings()[0]))"
+Cannot create a fit card because no outfit suggestion was provided.
+```
+
+### Caption variation — three fresh calls
+
+Caching was disabled for this command.
+
+```text
+$ AI201_CACHE=0 python - <<'PY'
+from tools import create_fit_card
+from utils.data_loader import load_listings
+
+item = load_listings()[0]
+outfit = "Pair with a white ribbed tank top and chunky white sneakers."
+
+for trial in range(1, 4):
+    print(f"\n--- Caption {trial} ---")
+    print(create_fit_card(outfit, item))
+PY
+
+--- Caption 1 ---
+Nothing beats the effortless look of classic denim for everyday wear. Style these Vintage Levi's 501 Jeans — Medium Wash with a crisp white ribbed tank top and chunky white sneakers for an easy, streetwear-inspired fit. Grab them now for just $38.00 before they drop on depop!
+
+--- Caption 2 ---
+I am obsessed with the effortless cool of these Vintage Levi's 501 Jeans — Medium Wash, which are listed on depop for just $38.00. I love styling them with a classic white ribbed tank top and chunky white sneakers for the ultimate off-duty look. Grab this timeless denim staple before it's gone!
+
+--- Caption 3 ---
+Nothing beats a timeless pair of denim for effortless everyday styling. Grab these Vintage Levi's 501 Jeans — Medium Wash for $38.00 on depop to complete your look. Pair them with a simple white ribbed tank top and chunky white sneakers for a fresh, casual vibe.
+```
+
+### Prompt revision and fresh check
+
+The first caption above invented a release claim: "before they drop on depop." The second used unsupported urgency: "before it's gone." I added this instruction to the caption prompt: "Do not invent release dates, availability, scarcity, discounts, or urgency to buy."
+
+```text
+$ AI201_CACHE=0 python -c "from tools import create_fit_card; from utils.data_loader import load_listings; print(create_fit_card('Pair with a white ribbed tank top and chunky white sneakers.', load_listings()[0]))"
+Elevate your everyday rotation with the Vintage Levi's 501 Jeans — Medium Wash, available now on depop for $38.00. For an effortless weekend look, pair them with a simple white ribbed tank top and chunky white sneakers.
+```
+
+The fresh result removed the future-release claim but still said "available now." This one run does not prove that unsupported availability claims have been eliminated.
 
 ---
 
 ## How I Used AI
 
-<!-- Two specific moments. What you asked, what came back, what you changed.
+### Moment 1 — Implementing and checking search
 
-     "I used Claude to help me code" is not enough.
+- **What I asked for:** I shared the starter files with ChatGPT and asked where to put the search implementation.
+- **What came back:** ChatGPT give keyword scoring, size matching, and price filtering code, then helped identify indentation errors from my screenshots.
+- **What I changed:** I inserted the implementation in tools.py, corrected its indentation, and ran the syntax and search checks. The actual outputs are recorded above.
 
-     "I gave Claude my search_listings spec. It returned None on no match
-     instead of an empty list, so I changed it" is the level we want. -->
+### Moment 2 — Reviewing generated captions
 
-**Moment 1**
+- **What I asked for:** I shared three generated captions with ChatGPT and asked for the next step.
+- **What came back:** ChatGPT identified an unsupported release claim and suggested a prompt instruction against invented release dates, availability, scarcity, discounts, and urgency.
+- **What I changed:** I added the instruction and generated a fresh caption with caching disabled. I preserved the original results and the new result, including its remaining "available now" claim.
 
-- *What I asked for:*
-- *What came back:*
-- *What I changed:*
+### Other AI assistance
 
-**Moment 2**
-
-- *What I asked for:*
-- *What came back:*
-- *What I changed:*
+ChatGPT also helped draft the tool specifications, acceptance criteria 3–5 and the reasons under the criteria, and the outfit and caption implementations. It helped organize the terminal output into this README. The recorded outputs came from my terminal runs.
 
 <!-- ═══════════════════════ UNIT 4 — THE TEST ═══════════════════════
 
