@@ -43,6 +43,7 @@ def new_session(query: str, wardrobe: dict) -> dict:
         "selected_item": None,       # the one you chose — goes into suggest_outfit
         "price_comparison": None,    # comparison returned by the fourth tool
         "wardrobe": wardrobe,        # the user's wardrobe
+        "styling_mode": None,        # chosen by the wardrobe branch
         "outfit_suggestion": None,   # what suggest_outfit returned
         "fit_card": None,            # what create_fit_card returned
         "error": None,               # set when the run ended early
@@ -69,6 +70,8 @@ def run_agent(query: str, wardrobe: dict) -> dict:
     Implemented workflow, following the branch rule from Milestone 2.
     An additional compare stage saves compare_prices(selected_item) in
     session["price_comparison"] before outfit generation.
+    The choose_styling stage selects general advice for an empty wardrobe
+    or combinations using existing wardrobe items.
 
       1. Start a session with new_session().
 
@@ -192,7 +195,29 @@ def run_agent(query: str, wardrobe: dict) -> dict:
             session["price_comparison"] = compare_prices(
                 session["selected_item"]
             )
-            stage = "outfit"
+            stage = "choose_styling"
+
+        elif stage == "choose_styling":
+            if session["wardrobe"].get("items"):
+                session["styling_mode"] = "wardrobe_combinations"
+                stage = "outfit"
+            else:
+                session["styling_mode"] = "general_advice"
+                stage = "general_advice"
+
+        elif stage == "general_advice":
+            session["outfit_suggestion"] = suggest_outfit(
+                session["selected_item"],
+                session["wardrobe"],
+            )
+
+            if not session["outfit_suggestion"].strip():
+                session["error"] = (
+                    "No general styling advice was generated. Please try again."
+                )
+                return session
+
+            stage = "caption"
 
         elif stage == "outfit":
             session["outfit_suggestion"] = suggest_outfit(
@@ -233,6 +258,7 @@ def _show(session: dict) -> None:
     item = session["selected_item"] or {}
     print(f"  found:    {item.get('title')} — ${item.get('price')} on {item.get('platform')}")
     print(f"  price comparison: {session['price_comparison']}")
+    print(f"  styling mode: {session['styling_mode']}")
     print(f"  outfit:   {session['outfit_suggestion']}")
     print(f"  fit card: {session['fit_card']}")
 
