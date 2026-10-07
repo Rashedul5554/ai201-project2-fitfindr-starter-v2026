@@ -16,7 +16,8 @@ Build and test your three tools in `tools.py` first. Then come here.
 import re
 import config
 import trace
-from tools import search_listings, suggest_outfit, create_fit_card, compare_prices
+from tools import suggest_outfit, create_fit_card, compare_prices
+from mcp_client import call_tool
 from generate import ModelUnavailable
 
 
@@ -83,7 +84,7 @@ def run_agent(query: str, wardrobe: dict) -> dict:
          string splitting, or asking the model are all fine — say which you
          chose in your README. Put the result in session["parsed"].
 
-      4. Call search_listings() with what you parsed.
+      4. Call search_listings through MCP with what you parsed.
          Put the results in session["search_results"].
 
          ⚠️ THIS IS THE BRANCH. If nothing came back:
@@ -177,8 +178,8 @@ def run_agent(query: str, wardrobe: dict) -> dict:
             stage = "search"
 
         elif stage == "search":
-            session["search_results"] = search_listings(
-                **session["parsed"]
+            session["search_results"] = call_tool(
+                "search_listings", session["parsed"]
             )
 
             if not session["search_results"]:
