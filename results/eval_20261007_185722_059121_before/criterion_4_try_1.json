@@ -1,0 +1,26 @@
+{
+  "source": "tools.py::create_fit_card",
+  "new_item": {
+    "id": "lst_001",
+    "title": "Vintage Levi's 501 Jeans — Medium Wash",
+    "description": "Classic 501s in a perfect medium wash. Some light fading at the knees which adds to the vintage look. No rips or stains.",
+    "category": "bottoms",
+    "style_tags": [
+      "vintage",
+      "classic",
+      "denim",
+      "streetwear"
+    ],
+    "size": "W30 L30",
+    "condition": "good",
+    "price": 38.0,
+    "colors": [
+      "blue",
+      "indigo"
+    ],
+    "brand": "Levi's",
+    "platform": "depop"
+  },
+  "outfit": "Style this item with neutral colors and simple accessories.",
+  "fit_card": "These classic Vintage Levi's 501 Jeans — Medium Wash are a versatile staple currently listed on depop for $38.00. I love styling them with neutral colors and simple accessories for an effortless, everyday look. They bring just the right amount of vintage character to any casual wardrobe."
+}
