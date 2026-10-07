@@ -12,6 +12,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import shutil
 import sys
 import tempfile
 import traceback
@@ -68,6 +69,7 @@ def caption_trial(attempt):
 
 def persistence_trial(attempt, query):
     from utils.data_loader import get_example_wardrobe
+    from utils import data_loader
     item = {'id': f'eval_added_{attempt}', 'name': f'Evaluation scarf {attempt}',
             'category': 'accessories', 'colors': ['blue'], 'style_tags': ['casual']}
     wardrobe = get_example_wardrobe()
@@ -76,6 +78,9 @@ def persistence_trial(attempt, query):
     # storage directory redirected to protect the user's saved wardrobe.
     with tempfile.TemporaryDirectory(prefix='fitfindr-eval-') as directory:
         folder = Path(directory)
+        # _DATA_DIR also controls listing/schema reads, so preserve those fixtures.
+        for filename in ('listings.json', 'wardrobe_schema.json'):
+            shutil.copy2(Path(data_loader._DATA_DIR) / filename, folder / filename)
         (folder / 'input.json').write_text(json.dumps(wardrobe))
         env = dict(os.environ, AI201_CACHE='0')
         for mode in ['save', 'load']:
