@@ -113,139 +113,179 @@ def run_agent(query: str, wardrobe: dict) -> dict:
       • A handler for ModelUnavailable, so a bad key produces a message rather
         than a stack trace. The import is already at the top of this file.
     """
+    trace.start_trace()
     session = new_session(query, wardrobe)
     stage = "parse"
     iterations = 0
 
-    while True:
-        iterations += 1
-        trace.check_iterations(iterations)
-
-        if stage == "parse":
-            description = session["query"]
-
-            price_match = re.search(
-                r"\b(?:under|below|up to)\s*\$?\s*(\d+(?:\.\d{1,2})?)",
-                description,
-                flags=re.IGNORECASE,
-            )
-            max_price = None
-            if price_match:
-                max_price = float(price_match.group(1))
-                description = (
-                    description[:price_match.start()]
-                    + " "
-                    + description[price_match.end():]
+    try:
+        while True:
+            iterations += 1
+            trace.check_iterations(iterations)
+    
+            if stage == "parse":
+                description = session["query"]
+    
+                price_match = re.search(
+                    r"\b(?:under|below|up to)\s*\$?\s*(\d+(?:\.\d{1,2})?)",
+                    description,
+                    flags=re.IGNORECASE,
                 )
-
-            size_match = re.search(
-                r"\b(?:in\s+)?size\s+"
-                r"(W\d+\s+L\d+|US\s+\d+(?:\.\d+)?|"
-                r"[A-Za-z0-9]+(?:/[A-Za-z0-9]+)?)\b",
-                description,
-                flags=re.IGNORECASE,
-            )
-            size = None
-            if size_match:
-                size = size_match.group(1).strip()
-                description = (
-                    description[:size_match.start()]
-                    + " "
-                    + description[size_match.end():]
+                max_price = None
+                if price_match:
+                    max_price = float(price_match.group(1))
+                    description = (
+                        description[:price_match.start()]
+                        + " "
+                        + description[price_match.end():]
+                    )
+    
+                size_match = re.search(
+                    r"\b(?:in\s+)?size\s+"
+                    r"(W\d+\s+L\d+|US\s+\d+(?:\.\d+)?|"
+                    r"[A-Za-z0-9]+(?:/[A-Za-z0-9]+)?)\b",
+                    description,
+                    flags=re.IGNORECASE,
                 )
-
-            description = re.sub(
-                r"^\s*(?:looking for|find me|find|a|an)\b\s*",
-                "",
-                description,
-                flags=re.IGNORECASE,
-            )
-            description = re.sub(
-                r"^\s*(?:a|an)\b\s*",
-                "",
-                description,
-                flags=re.IGNORECASE,
-            )
-            description = " ".join(
-                description.replace(",", " ").split()
-            )
-
-            session["parsed"] = {
-                "description": description,
-                "size": size,
-                "max_price": max_price,
-            }
-            stage = "search"
-
-        elif stage == "search":
-            session["search_results"] = call_tool(
-                "search_listings", session["parsed"]
-            )
-
-            if not session["search_results"]:
-                session["error"] = (
-                    "No matching listings were found. Try different "
-                    "description keywords, another size, or a higher budget."
+                size = None
+                if size_match:
+                    size = size_match.group(1).strip()
+                    description = (
+                        description[:size_match.start()]
+                        + " "
+                        + description[size_match.end():]
+                    )
+    
+                description = re.sub(
+                    r"^\s*(?:looking for|find me|find|a|an)\b\s*",
+                    "",
+                    description,
+                    flags=re.IGNORECASE,
                 )
+                description = re.sub(
+                    r"^\s*(?:a|an)\b\s*",
+                    "",
+                    description,
+                    flags=re.IGNORECASE,
+                )
+                description = " ".join(
+                    description.replace(",", " ").split()
+                )
+    
+                session["parsed"] = {
+                    "description": description,
+                    "size": size,
+                    "max_price": max_price,
+                }
+                trace.step("parse_query", inputs=query, returned=repr(session["parsed"]))
+                stage = "search"
+    
+            elif stage == "search":
+                session["search_results"] = call_tool(
+                    "search_listings", session["parsed"]
+                )
+    
+                trace.step("search_listings (via MCP)",
+                           inputs=repr(session["parsed"]),
+                           returned=session["search_results"])
+    
+                if not session["search_results"]:
+                    session["error"] = (
+                        "No matching listings were found. Try different "
+                        "description keywords, another size, or a higher budget."
+                    )
+                    trace.step("empty_search", note=session["error"])
+                    return session
+    
+                session["selected_item"] = session["search_results"][0]
+                trace.step("select_item", returned=session["selected_item"])
+                stage = "compare"
+    
+            elif stage == "compare":
+                session["price_comparison"] = compare_prices(
+                    session["selected_item"]
+                )
+                trace.step("compare_prices", inputs=session["selected_item"],
+                           returned=repr(session["price_comparison"]))
+                stage = "choose_styling"
+    
+            elif stage == "choose_styling":
+                if session["wardrobe"].get("items"):
+                    session["styling_mode"] = "wardrobe_combinations"
+                    stage = "outfit"
+                else:
+                    session["styling_mode"] = "general_advice"
+                    stage = "general_advice"
+    
+                trace.step("choose_styling",
+                           inputs=f"wardrobe items: {len(session['wardrobe'].get('items', []))}",
+                           returned=session["styling_mode"],
+                           note=f"Next stage: {stage}")
+    
+            elif stage == "general_advice":
+                session["outfit_suggestion"] = suggest_outfit(
+                    session["selected_item"],
+                    session["wardrobe"],
+                )
+                trace.step("suggest_outfit",
+                           inputs=f"item={session['selected_item']['id']}; wardrobe IDs="
+                                  + repr([item.get('id') for item in session['wardrobe'].get('items', [])]),
+                           returned=session["outfit_suggestion"],
+                           note=f"Styling mode: {session['styling_mode']}")
+    
+                if not session["outfit_suggestion"].strip():
+                    session["error"] = (
+                        "No general styling advice was generated. Please try again."
+                    )
+                    return session
+    
+                stage = "caption"
+    
+            elif stage == "outfit":
+                session["outfit_suggestion"] = suggest_outfit(
+                    session["selected_item"],
+                    session["wardrobe"],
+                )
+                trace.step("suggest_outfit",
+                           inputs=f"item={session['selected_item']['id']}; wardrobe IDs="
+                                  + repr([item.get('id') for item in session['wardrobe'].get('items', [])]),
+                           returned=session["outfit_suggestion"],
+                           note=f"Styling mode: {session['styling_mode']}")
+    
+                if not session["outfit_suggestion"].strip():
+                    session["error"] = (
+                        "No outfit suggestion was generated. Please try again."
+                    )
+                    return session
+    
+                stage = "caption"
+    
+            elif stage == "caption":
+                session["fit_card"] = create_fit_card(
+                    session["outfit_suggestion"],
+                    session["selected_item"],
+                )
+                trace.step("create_fit_card",
+                           inputs=f"item={session['selected_item']['id']}; outfit="
+                                  + session['outfit_suggestion'],
+                           returned=session["fit_card"])
+    
+                if not session["fit_card"].strip():
+                    session["error"] = (
+                        "No caption was generated. Please try again."
+                    )
+    
                 return session
-
-            session["selected_item"] = session["search_results"][0]
-            stage = "compare"
-
-        elif stage == "compare":
-            session["price_comparison"] = compare_prices(
-                session["selected_item"]
-            )
-            stage = "choose_styling"
-
-        elif stage == "choose_styling":
-            if session["wardrobe"].get("items"):
-                session["styling_mode"] = "wardrobe_combinations"
-                stage = "outfit"
-            else:
-                session["styling_mode"] = "general_advice"
-                stage = "general_advice"
-
-        elif stage == "general_advice":
-            session["outfit_suggestion"] = suggest_outfit(
-                session["selected_item"],
-                session["wardrobe"],
-            )
-
-            if not session["outfit_suggestion"].strip():
-                session["error"] = (
-                    "No general styling advice was generated. Please try again."
-                )
-                return session
-
-            stage = "caption"
-
-        elif stage == "outfit":
-            session["outfit_suggestion"] = suggest_outfit(
-                session["selected_item"],
-                session["wardrobe"],
-            )
-
-            if not session["outfit_suggestion"].strip():
-                session["error"] = (
-                    "No outfit suggestion was generated. Please try again."
-                )
-                return session
-
-            stage = "caption"
-
-        elif stage == "caption":
-            session["fit_card"] = create_fit_card(
-                session["outfit_suggestion"],
-                session["selected_item"],
-            )
-
-            if not session["fit_card"].strip():
-                session["error"] = (
-                    "No caption was generated. Please try again."
-                )
-
-            return session
+    except ModelUnavailable:
+        failed_tool = "create_fit_card" if stage == "caption" else "suggest_outfit"
+        session["error"] = (
+            f"The model call for {failed_tool} failed. Check your internet "
+            "connection and GEMINI_API_KEY in .env, run python test.py, "
+            "then try again."
+        )
+        trace.step(failed_tool + " (failed)",
+                   note=session["error"])
+        return session
 
 
 # ── running it directly ───────────────────────────────────────────────────────

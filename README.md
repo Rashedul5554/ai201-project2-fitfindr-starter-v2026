@@ -547,6 +547,10 @@ The fresh result removed the future-release claim but still said "available now.
 
 ChatGPT also helped draft the tool specifications, bonus-feature plans, acceptance criteria 3–5 and the reasons under the criteria, and the outfit, caption, price-comparison, and planning-loop implementations, including the command-line price display and the explicit wardrobe-content branch. It also helped implement wardrobe saving and loading, update the command-line interface, and write the saved-item input check. It helped organize the terminal output into this README. The recorded outputs came from my terminal runs.
 
+### Unit 4 — MCP and failure-handling assistance
+
+I shared the MCP client, agent, trace helper, and model adapter with ChatGPT. It prepared the MCP registration, changed the agent's search call, and added tracing and a handler for `ModelUnavailable`. I installed the updates and ran the direct-versus-MCP comparison and the four development checks recorded below. ChatGPT also helped place my actual outputs in this README. Formal evaluation and a measured improvement are still pending.
+
 <!-- ═══════════════════════ UNIT 4 — THE TEST ═══════════════════════
 
      Don't fill these in during unit 3.
@@ -626,17 +630,186 @@ that produced it:
      the same length, your branch isn't working — and this is the fastest way
      anyone will ever find that out. -->
 
+These are actual Milestone 2 development runs from `app.py`, with steps recorded by `agent.py::run_agent` using `trace.step`. Caching was disabled for all four runs. These are not the five-trial acceptance evaluation. Trace values are shortened by the supplied trace formatter.
+
 **Happy path**
 
-```
+```text
+AI201_CACHE=0 python app.py ask 'vintage graphic tee under $30, size M' --trace
+[1] parse_query
+      in:  vintage graphic tee under $30, size M
+      out: {'description': 'vintage graphic tee', 'size': 'M', 'max_price': 30.0}
+[2] search_listings (via MCP)
+      in:  {'description': 'vintage graphic tee', 'size': 'M', 'max_price': 30.0}
+      out: 8 items: Y2K Baby Tee — Butterfly Print, Mesh Long-Sleeve Top — Black, 90s Silk Slip Dress — Floral, Midi Length … +5 more
+[3] select_item
+      out: Y2K Baby Tee — Butterfly Print ($18.0, depop)
+[4] compare_prices
+      in:  Y2K Baby Tee — Butterfly Print ($18.0, depop)
+      out: {'comparison_count': 14, 'median_price': 21.5, 'price_difference': -3.5}
+[5] choose_styling
+      in:  wardrobe items: 11
+      out: wardrobe_combinations
+      →    Next stage: outfit
+[6] suggest_outfit
+      in:  item=lst_002; wardrobe IDs=['w_001', 'w_002', 'w_003', 'w_004', 'w_005', 'w_006', 'w_007', 'w_008', 'w_009', '…
+      out: Here are two outfit suggestions featuring your Y2K Baby Tee with the butterfly print, using pieces from the su…
+      →    Styling mode: wardrobe_combinations
+[7] create_fit_card
+      in:  item=lst_002; outfit=Here are two outfit suggestions featuring your Y2K Baby Tee with the butterfly print, usi…
+      out: Channel your inner early 2000s style by styling this sweet Y2K Baby Tee — Butterfly Print with high-waisted, b…
 
+  Found:    Y2K Baby Tee — Butterfly Print — $18.0 on depop
+
+  Price comparison (same-category dataset listings):
+    Other listings: 14
+    Median price: $21.50
+    Selected price minus median: $-3.50
+
+  Outfit:   Here are two outfit suggestions featuring your Y2K Baby Tee with the butterfly print, using pieces from the supplied wardrobe:
+
+### Outfit 1: Classic Y2K Streetwear
+* **Selected Item:** Y2K Baby Tee — Butterfly Print
+* **Wardrobe Pieces Used:**
+  * **Baggy straight-leg jeans, dark wash** (w_001)
+  * **Chunky white sneakers** (w_007)
+  * **Black crossbody bag** (w_010)
+  * **Vintage black denim jacket** (w_006) *(Optional layer for cooler weather)*
+
+**Why they work together:**
+This combination leans directly into the Y2K aesthetic of the baby tee. The fitted, cropped silhouette of the butterfly tee creates a great proportion-play contrast when paired with the high-waisted, baggy straight-leg jeans. The chunky white sneakers tie in with the white base of the tee, while the black crossbody bag and optional cropped denim jacket keep the look cohesive and effortless. 
+
+***
+
+### Outfit 2: Casual Earth-Tone Contrast
+* **Selected Item:** Y2K Baby Tee — Butterfly Print
+* **Wardrobe Pieces Used:**
+  * **Wide-leg khaki trousers** (w_002)
+  * **Chunky white sneakers** (w_007)
+  * **Brown leather belt** (w_009)
+* **Optional (not part of the supplied wardrobe):** A small retro shoulder bag or delicate silver chain necklace to complement the early 2000s vibe.
+
+**Why they work together:**
+Pairing the sweet, pink-and-purple butterfly graphic tee with wide-leg khaki trousers bridges the gap between retro Y2K style and relaxed, minimal earth tones. Tucking the baby tee in and adding the brown leather belt pulls the waistline together, while the chunky white sneakers keep the outfit grounded, casual, and easy to wear day-to-day.
+
+  Fit card: Channel your inner early 2000s style by styling this sweet Y2K Baby Tee — Butterfly Print with high-waisted, baggy straight-leg jeans for a classic streetwear proportion play. It is listed on depopfor $18.00 and brings an effortless retro vibe to your everyday wardrobe.
+
+2 model calls this session, 1519 prompt + 485 output tokens
 ```
 
 **Empty search**
 
+```text
+AI201_CACHE=0 python app.py ask 'zzzznomatch under $5' --trace
+[1] parse_query
+      in:  zzzznomatch under $5
+      out: {'description': 'zzzznomatch', 'size': None, 'max_price': 5.0}
+[2] search_listings (via MCP)
+      in:  {'description': 'zzzznomatch', 'size': None, 'max_price': 5.0}
+      out: [] (empty)
+[3] empty_search
+      →    No matching listings were found. Try different description keywords, another size, or a higher budget.
+
+  No matching listings were found. Try different description keywords, another size, or a higher budget.
+
+0 model calls this session
 ```
 
+**Empty wardrobe**
+
+```text
+AI201_CACHE=0 python app.py ask 'vintage graphic tee under $30, size M' --empty-wardrobe --trace
+(running with an empty wardrobe)
+[1] parse_query
+      in:  vintage graphic tee under $30, size M
+      out: {'description': 'vintage graphic tee', 'size': 'M', 'max_price': 30.0}
+[2] search_listings (via MCP)
+      in:  {'description': 'vintage graphic tee', 'size': 'M', 'max_price': 30.0}
+      out: 8 items: Y2K Baby Tee — Butterfly Print, Mesh Long-Sleeve Top — Black, 90s Silk Slip Dress — Floral, Midi Length … +5 more
+[3] select_item
+      out: Y2K Baby Tee — Butterfly Print ($18.0, depop)
+[4] compare_prices
+      in:  Y2K Baby Tee — Butterfly Print ($18.0, depop)
+      out: {'comparison_count': 14, 'median_price': 21.5, 'price_difference': -3.5}
+[5] choose_styling
+      in:  wardrobe items: 0
+      out: general_advice
+      →    Next stage: general_advice
+[6] suggest_outfit
+      in:  item=lst_002; wardrobe IDs=[]
+      out: Here is some styling advice for the **Y2K Baby Tee with Butterfly Print**, along with a couple of outfit sugge…
+      →    Styling mode: general_advice
+[7] create_fit_card
+      in:  item=lst_002; outfit=Here is some styling advice for the **Y2K Baby Tee with Butterfly Print**, along with a c…
+      out: Channel your inner 2000s icon by styling the Y2K Baby Tee — Butterfly Print with a pastel pink pleated tennis …
+
+  Found:    Y2K Baby Tee — Butterfly Print — $18.0 on depop
+
+  Price comparison (same-category dataset listings):
+    Other listings: 14
+    Median price: $21.50
+    Selected price minus median: $-3.50
+
+  Outfit:   Here is some styling advice for the **Y2K Baby Tee with Butterfly Print**, along with a couple of outfit suggestions you can build to lean into its retro aesthetic!
+
+### Styling Advice
+* **Color Palette:** Since the tee features white, pink, and purple, you can easily pair it with matching pastel tones like lavender or baby pink, neutral bases like white or denim, or add contrast with dark charcoal grey and black for a classic Y2K edge.
+* **Complementary Clothing Types:** 
+  * *Bottoms:* Low-rise cargo pants, pleated mini skirts, wide-leg denim, or a slip skirt to play with proportions against the fitted, cropped silhouette.
+  * *Footwear:* Chunky platform sneakers, strappy sandals, or retro platform mules.
+  * *Accessories:* Small shoulder bags (baguette bags), beaded necklaces, or butterfly claw clips to complete the 2000s look.
+
+---
+
+### Outfit Suggestions
+
+**Outfit 1: Casual Y2K Streetwear**
+* **Top:** Y2K Baby Tee — Butterfly Print
+* **Bottoms:** Relaxed, low-rise blue denim cargo pants
+* **Footwear:** Chunky platform white sneakers
+* **Accessories:** A small nylon shoulder bag and a metallic or beaded chain necklace
+
+**Outfit 2: Sweet & Nostalgic**
+* **Top:** Y2K Baby Tee — Butterfly Print
+* **Bottoms:** A pastel pink or lavender pleated tennis skirt
+* **Footwear:** Retro platform sandals or Mary Janes with white crew socks
+* **Accessories:** Pastel butterfly hair clips and a simple pastel tote bag
+
+  Fit card: Channel your inner 2000s icon by styling the Y2K Baby Tee — Butterfly Print with a pastel pink pleated tennis skirt and retro platform sandals for a sweet, nostalgic look. This cute cropped top is available right now on depop for $18.00. Grab it to add a playful touch of early-aughts charm to your everyday wardrobe!
+
+2 model calls this session, 817 prompt + 416 output tokens
 ```
+
+**Model unavailable**
+
+```text
+GEMINI_API_KEY=invalid-test-key AI201_CACHE=0 python app.py ask 'vintage graphic tee under $30, size M' --trace
+[1] parse_query
+      in:  vintage graphic tee under $30, size M
+      out: {'description': 'vintage graphic tee', 'size': 'M', 'max_price': 30.0}
+[2] search_listings (via MCP)
+      in:  {'description': 'vintage graphic tee', 'size': 'M', 'max_price': 30.0}
+      out: 8 items: Y2K Baby Tee — Butterfly Print, Mesh Long-Sleeve Top — Black, 90s Silk Slip Dress — Floral, Midi Length … +5 more
+[3] select_item
+      out: Y2K Baby Tee — Butterfly Print ($18.0, depop)
+[4] compare_prices
+      in:  Y2K Baby Tee — Butterfly Print ($18.0, depop)
+      out: {'comparison_count': 14, 'median_price': 21.5, 'price_difference': -3.5}
+[5] choose_styling
+      in:  wardrobe items: 11
+      out: wardrobe_combinations
+      →    Next stage: outfit
+[6] suggest_outfit (failed)
+      →    The model call for suggest_outfit failed. Check your internet connection and GEMINI_API_KEY in .env, run python test.py, then try again.
+
+  The model call for suggest_outfit failed. Check your internet connection and GEMINI_API_KEY in .env, run python test.py, then try again.
+
+1 model calls this session
+```
+
+**What these checks showed:** The normal run completed all four tools with two model calls. Empty search stopped before outfit generation with zero model calls. Empty wardrobe selected general advice and completed with two model calls. The invalid-key run stopped at `suggest_outfit` after one model call and gave recovery instructions without a traceback. The temporary environment variable affected only that command; the real `.env` key was not changed.
+
+**Observation for later diagnosis:** The empty-wardrobe caption claimed the item was “available right now.” The mock listing does not establish live availability. I preserved that output; this observation is not a formal criterion verdict or a measured improvement.
 
 **On the MCP move:** <!-- what changed in your code, and whether anything
 behaved differently afterwards. If the rewire didn't work, say exactly where it
