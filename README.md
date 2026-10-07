@@ -643,6 +643,14 @@ behaved differently afterwards. If the rewire didn't work, say exactly where it
 broke — the error text and the last thing that worked. That earns the point in
 full. -->
 
+I registered search_listings in mcp_server.py and changed agent.py::run_agent to call it through mcp_client.call_tool. Its inputs are description (string), size (optional string), and max_price (optional number in US dollars).
+
+I compared the MCP results with direct function results, including every returned field. Both checks passed:
+
+    PASS: 'graphic tee' — 2 matching listings
+    PASS: 'zzzznomatch' — 0 matching listings
+
+The agent then completed the query 'vintage graphic tee under $30, size M', selecting the Y2K Baby Tee at $18.00 and returning an outfit and fit card. The outfit and caption reused two cached responses. These checks verified the MCP move; they were not acceptance-evaluation trials.
 
 
 ---
