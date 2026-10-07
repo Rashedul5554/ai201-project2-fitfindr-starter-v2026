@@ -31,7 +31,7 @@ I ran the query 'vintage graphic tee under $30'. The starter reported that the p
 
 The following declarations were recorded before implementation. They are retained here as the original plan.
 
-**Current status:** Price comparison and the explicit wardrobe-content branch are implemented, with development runs recorded under Sample Run. Style memory is also implemented: separate commands saved and loaded the wardrobe, and a development check confirmed that the added scarf reached `suggest_outfit` unchanged. This is one persistence check, not a five-trial acceptance result.
+**Current status:** Price comparison and the explicit wardrobe-content branch are implemented, with development runs recorded under Sample Run. Style memory is also implemented: separate commands saved and loaded the wardrobe, and a development check confirmed that the added scarf reached `suggest_outfit` unchanged. The Unit 3 output below is one development check; the later Unit 4 corrected baseline passed all five persistence trials.
 
 - **Fourth tool — compare_prices:** Takes the selected listing and compares its price with other listings in the same category. Returns a dictionary containing the number of comparison items, their median price, and the selected item's difference from that median. If no comparison items exist, returns a count of zero and None for the median and difference. The agent will call this tool after selecting an item. Comparisons describe this dataset, not market value.
 
@@ -39,7 +39,7 @@ The following declarations were recorded before implementation. They are retaine
 
 - **Style memory:** Save user-provided wardrobe items locally between runs. I will demonstrate one run that stores a wardrobe change and a separate run that loads and uses that change.
 
-After implementation, I will add actual run output and explain what each feature changed.
+The implementation and development output are recorded below; these declarations are retained as historical plans.
 
 ---
 
@@ -257,7 +257,7 @@ Tool received: {'id': 'my_scarf_001', 'name': 'Blue cotton scarf', 'category': '
 Agent error: None
 ```
 
-The saved item reached the outfit tool unchanged. The model did not select the scarf in the recorded outfit, so this evidence establishes persistence and delivery to the tool, not that the scarf changed the recommendation. This is one development check; the five trials for acceptance criterion 5 are still pending. The generated text above is preserved as received, including spacing errors and its availability wording.
+The saved item reached the outfit tool unchanged. The model did not select the scarf in the recorded outfit, so this evidence establishes persistence and delivery to the tool, not that the scarf changed the recommendation. This is one development check; the later five-trial acceptance result is recorded under Run Log — Before. The generated text above is preserved as received, including spacing errors and its availability wording.
 
 ### Second-branch bonus — existing and empty wardrobes
 
@@ -549,7 +549,7 @@ ChatGPT also helped draft the tool specifications, bonus-feature plans, acceptan
 
 ### Unit 4 — MCP and failure-handling assistance
 
-I shared the MCP client, agent, trace helper, and model adapter with ChatGPT. It prepared the MCP registration, changed the agent's search call, and added tracing and a handler for `ModelUnavailable`. I installed the updates and ran the direct-versus-MCP comparison and the four development checks recorded below. ChatGPT also helped place my actual outputs in this README. Formal evaluation and a measured improvement are still pending.
+I shared the MCP client, agent, trace helper, and model adapter with ChatGPT. It prepared the MCP registration, changed the agent's search call, and added tracing and a handler for `ModelUnavailable`. I installed the updates and ran the direct-versus-MCP comparison and the four development checks recorded below. ChatGPT also helped place my actual outputs in this README. The corrected formal baseline is recorded below; a measured agent improvement and after evaluation are still pending. ChatGPT also prepared the evaluation runner and helped review all 25 evidence records. Its initial persistence test omitted the dataset fixtures from the temporary directory; that mistake and the correction are documented in Run Log — Before. It helped prepare the scoring and explanations in this README from the recorded outputs.
 
 <!-- ═══════════════════════ UNIT 4 — THE TEST ═══════════════════════
 
@@ -560,61 +560,228 @@ I shared the MCP client, agent, trace helper, and model adapter with ChatGPT. It
 
 ## Run Log — Before
 
-<!-- Five criteria, five tries each, in this exact format.
+The corrected baseline was recorded on October 7, 2026, with `python run_eval.py --label before_corrected`. Caching was disabled. Each original criterion was tested five times; the original targets in `criteria.md` are unchanged. PASS/FAIL decisions below were assigned by reviewing the saved evidence, not by the runner.
 
-     Five, because your criteria are written out of five. Mark each try PASS
-     or FAIL, count the passes, and read that count against your target — a
-     row targeting 4 of 5 with three PASS cells is MISSED (3/5).
-
-     `python run_eval.py --label before` runs everything and writes the table
-     into results/. Paste it here and fill in the verdicts. -->
+[Full corrected report](results/eval_20261007_191301_464195_before_corrected/report.md). The same directory contains one JSON evidence file per trial.
 
 | Criterion | Target | Try 1 | Try 2 | Try 3 | Try 4 | Try 5 | Verdict |
 |---|---|---|---|---|---|---|---|
-| 1.  |  |  |  |  |  |  |  |
-| 2.  |  |  |  |  |  |  |  |
-| 3.  |  |  |  |  |  |  |  |
-| 4.  |  |  |  |  |  |  |  |
-| 5.  |  |  |  |  |  |  |  |
+| 1. Matching query completes | 4 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 2. Impossible query stops | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 3. Selected item is preserved | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 4. Accurate short fit card | 4 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 5. Wardrobe persists across processes | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
 
-**Real output from one try**, pasted as text, naming the file and function
-that produced it:
+### Correction to the evaluation setup
 
+The [original baseline](results/eval_20261007_185722_059121_before/report.md) is retained. Its five persistence trials stopped before `suggest_outfit` because `run_eval.py::worker` redirected the shared data directory to a temporary folder that did not contain `listings.json`. Search through MCP succeeded, but the local `tools.py::compare_prices` called `load_listings` against that temporary folder and raised `FileNotFoundError`.
+
+These were invalid persistence trials caused by the evaluation setup; they do not establish a failure in wardrobe persistence. Commit `0afb690` copied the listings and wardrobe-schema fixtures into the isolated directory before starting the workers. I then reran all 25 trials into a new folder. The original evidence was not overwritten. This correction is not the measured agent improvement required later in Unit 4.
+
+### Evidence excerpts from the corrected baseline
+
+These are excerpts from the saved JSON records, not additional terminal runs. The full records linked below retain the complete inputs, outputs, and traces.
+
+**Criterion 1, try 1 — Matching query completes.** Source: `agent.py::run_agent`, including `tools.py::create_fit_card`. [Full trial](results/eval_20261007_191301_464195_before_corrected/criterion_1_try_1.json).
+
+```json
+{
+  "calls": [
+    "search_listings (MCP)",
+    "suggest_outfit",
+    "create_fit_card"
+  ],
+  "fit_card": "Channel total early 2000s energy by styling the Y2K Baby Tee — Butterfly Print with dark wash baggy straight-leg jeans and chunky white sneakers for a cool streetwear contrast. This cute graphic top is available on depop for $18.00.",
+  "error": null
+}
 ```
 
+**Criterion 2, try 1 — Impossible query stops.** Source: `agent.py::run_agent` empty-search branch. [Full trial](results/eval_20261007_191301_464195_before_corrected/criterion_2_try_1.json).
+
+```json
+{
+  "calls": [
+    "search_listings (MCP)"
+  ],
+  "search_return": [],
+  "error": "No matching listings were found. Try different description keywords, another size, or a higher budget.",
+  "fit_card": null
+}
+```
+
+**Criterion 3, try 1 — Selected item is preserved.** Source: `agent.py::run_agent`, observed by `run_eval.py::agent_trial`. [Full trial](results/eval_20261007_191301_464195_before_corrected/criterion_3_try_1.json).
+
+```json
+{
+  "search_return[0]": {
+    "id": "lst_002",
+    "title": "Y2K Baby Tee — Butterfly Print",
+    "description": "Super cute early 2000s baby tee with butterfly graphic. Fitted crop length. Tag says medium but fits like a small.",
+    "category": "tops",
+    "style_tags": [
+      "y2k",
+      "vintage",
+      "graphic tee",
+      "cottagecore"
+    ],
+    "size": "S/M",
+    "condition": "excellent",
+    "price": 18.0,
+    "colors": [
+      "white",
+      "pink",
+      "purple"
+    ],
+    "brand": null,
+    "platform": "depop"
+  },
+  "session.selected_item": {
+    "id": "lst_002",
+    "title": "Y2K Baby Tee — Butterfly Print",
+    "description": "Super cute early 2000s baby tee with butterfly graphic. Fitted crop length. Tag says medium but fits like a small.",
+    "category": "tops",
+    "style_tags": [
+      "y2k",
+      "vintage",
+      "graphic tee",
+      "cottagecore"
+    ],
+    "size": "S/M",
+    "condition": "excellent",
+    "price": 18.0,
+    "colors": [
+      "white",
+      "pink",
+      "purple"
+    ],
+    "brand": null,
+    "platform": "depop"
+  },
+  "outfit_inputs[0].new_item": {
+    "id": "lst_002",
+    "title": "Y2K Baby Tee — Butterfly Print",
+    "description": "Super cute early 2000s baby tee with butterfly graphic. Fitted crop length. Tag says medium but fits like a small.",
+    "category": "tops",
+    "style_tags": [
+      "y2k",
+      "vintage",
+      "graphic tee",
+      "cottagecore"
+    ],
+    "size": "S/M",
+    "condition": "excellent",
+    "price": 18.0,
+    "colors": [
+      "white",
+      "pink",
+      "purple"
+    ],
+    "brand": null,
+    "platform": "depop"
+  }
+}
+```
+
+**Criterion 4, try 1 — Accurate short fit card.** Source: `tools.py::create_fit_card`, called by `run_eval.py::caption_trial`. [Full trial](results/eval_20261007_191301_464195_before_corrected/criterion_4_try_1.json).
+
+```json
+{
+  "source": "tools.py::create_fit_card",
+  "new_item": {
+    "id": "lst_001",
+    "title": "Vintage Levi's 501 Jeans — Medium Wash",
+    "description": "Classic 501s in a perfect medium wash. Some light fading at the knees which adds to the vintage look. No rips or stains.",
+    "category": "bottoms",
+    "style_tags": [
+      "vintage",
+      "classic",
+      "denim",
+      "streetwear"
+    ],
+    "size": "W30 L30",
+    "condition": "good",
+    "price": 38.0,
+    "colors": [
+      "blue",
+      "indigo"
+    ],
+    "brand": "Levi's",
+    "platform": "depop"
+  },
+  "outfit": "Style this item with neutral colors and simple accessories.",
+  "fit_card": "Elevate your everyday rotation with the Vintage Levi's 501 Jeans — Medium Wash, available now on depop for $38.00. Pair them with neutral colors and simple accessories for an effortlessly classic look. It is a versatile denim staple that brings authentic character to any wardrobe."
+}
+```
+
+**Criterion 5, try 1 — Wardrobe persists across processes.** Source: `utils/data_loader.py::save_wardrobe` and `load_saved_wardrobe`, followed by `agent.py::run_agent`; captured by `run_eval.py`. [Full trial](results/eval_20261007_191301_464195_before_corrected/criterion_5_try_1.json).
+
+```json
+{
+  "expected_added_item": {
+    "id": "eval_added_1",
+    "name": "Evaluation scarf 1",
+    "category": "accessories",
+    "colors": [
+      "blue"
+    ],
+    "style_tags": [
+      "casual"
+    ]
+  },
+  "save_process": {
+    "pid": 12237,
+    "operation": "save_wardrobe"
+  },
+  "load_process_pid": 12238,
+  "saved_item": {
+    "id": "eval_added_1",
+    "name": "Evaluation scarf 1",
+    "category": "accessories",
+    "colors": [
+      "blue"
+    ],
+    "style_tags": [
+      "casual"
+    ]
+  },
+  "loaded_item": {
+    "id": "eval_added_1",
+    "name": "Evaluation scarf 1",
+    "category": "accessories",
+    "colors": [
+      "blue"
+    ],
+    "style_tags": [
+      "casual"
+    ]
+  },
+  "item_received_by_suggest_outfit": {
+    "id": "eval_added_1",
+    "name": "Evaluation scarf 1",
+    "category": "accessories",
+    "colors": [
+      "blue"
+    ],
+    "style_tags": [
+      "casual"
+    ]
+  }
+}
 ```
 
 ---
 
 ## Verdicts and Diagnoses
 
-<!-- MET or MISSED per criterion against LAST UNIT's target, plus a sentence on
-     how you decided.
+1. **Criterion 1 — MET (5/5), target 4/5.** Every trial recorded search through MCP, outfit generation, and caption generation, returned a non-empty fit card, and ended with no session error.
+2. **Criterion 2 — MET (5/5), target 5/5.** Every search returned an empty list. No outfit or caption call followed. Each result named description keywords, size, or budget as something the user could change.
+3. **Criterion 3 — MET (5/5), target 5/5.** Full dictionary comparisons showed that the first search result, `session["selected_item"]`, and the actual `new_item` received by `suggest_outfit` had identical field values in every trial.
+4. **Criterion 4 — MET (5/5), target 4/5.** Trials used five different listings. Sentence counts were 3, 3, 3, 2, and 3, excluding decimal points in prices. Every caption contained the correct listing title, price, and platform once each.
+5. **Criterion 5 — MET (5/5), target 5/5.** The five distinct added items (`eval_added_1` through `eval_added_5`) matched in every field across saved data, loaded data, and the wardrobe received by `suggest_outfit`. Save and load used separate processes in every trial. This establishes persistence and delivery, not that the model chose the added item for an outfit.
 
-     Then, for every miss: which of the four places it happened — a tool, the
-     loop's branch, the session, or the model's output — AND the mechanism.
+**No original criterion was missed in the corrected baseline.** This does not establish that every behavior is correct. Criterion 4's quality bar is too limited: captions can meet the sentence and listing-fact requirements while giving generic styling advice or implying live availability. For example, its first trial says “available now,” which the mock dataset cannot verify. The existing criterion does not prohibit that wording, so the original verdict remains MET.
 
-     Not a diagnosis:  "The fit card was bad."
-     A diagnosis:      "The fit card criterion missed on 2 of 5 items. Both had
-                        an empty brand field. My prompt puts the brand in the
-                        first sentence, so the card opened with a blank and read
-                        like a fragment. The tool worked; the prompt assumed a
-                        field that isn't always there."
-
-     Look for a pattern. Three misses on the same tool is one problem, not
-     three. -->
-
-| # | Criterion | Target | Verdict | How I decided |
-|---|---|---|---|---|
-| 1 |  |  |  |  |
-| 2 |  |  |  |  |
-| 3 |  |  |  |  |
-| 4 |  |  |  |  |
-| 5 |  |  |  |  |
-
-**Diagnoses**
-
-
+**Proposed stricter check, not yet evaluated:** Across five fixed listing/outfit pairs with specific styling suggestions, at least four captions should retain a concrete styling detail from the supplied outfit. Record those inputs and their baseline outputs before changing the caption prompt, then use the same inputs afterward. This supplements the original criterion; it does not replace it or change its past score. The current caption trials supplied generic advice, so they cannot establish this new baseline.
 
 ---
 
@@ -830,41 +997,24 @@ The agent then completed the query 'vintage graphic tee under $30, size M', sele
 
 ## The Improvement
 
-<!-- What you changed, why your diagnosis pointed at it, and the after-run in
-     the same table format. One change, measured properly.
+**Status: pending.** The corrected baseline is complete, but no post-baseline agent improvement or after evaluation has been recorded. Fixing the persistence test fixtures repaired the evaluation setup and is not counted here as an agent improvement.
 
-     `python run_eval.py --label after` -->
-
-**What I changed:**
-
-**Which failure it was meant to fix:**
+**Proposed next step:** Record a baseline for the stricter caption-detail check described above, then make one focused change to the caption prompt. Keep the five inputs fixed so that before and after results can be compared.
 
 ### Run Log — After
 
-| Criterion | Target | Try 1 | Try 2 | Try 3 | Try 4 | Try 5 | Verdict |
-|---|---|---|---|---|---|---|---|
-| 1.  |  |  |  |  |  |  |  |
-| 2.  |  |  |  |  |  |  |  |
-| 3.  |  |  |  |  |  |  |  |
-| 4.  |  |  |  |  |  |  |  |
-| 5.  |  |  |  |  |  |  |  |
-
-**Did it help, and how do I know:**
-
-<!-- If it made things worse, say that. Honestly reported, that earns full
-     credit and is more interesting than one that worked. -->
-
-
+Not run yet. After implementing the chosen improvement, rerun all five original criteria with caching disabled using `python run_eval.py --label after`, and also rerun the stricter check with its original inputs. Record the actual trial verdicts and whether the change helped, including any regressions.
 
 ---
 
 ## What's Still Broken
 
-<!-- For each criterion still missed: what you'd do, and why you stopped where
-     you did. "I ran out of time" is fine if it's true. Pretending nothing is
-     left is not. -->
+- The original criteria all met their targets in this corrected baseline, but generated captions still imply live availability. Criterion 4, try 1 says “available now”; a local mock listing cannot establish that claim.
+- The caption tests used generic outfit advice. They do not yet measure whether specific outfit details survive caption generation. The proposed stricter check and measured improvement remain pending.
+- Search uses keyword overlap and the query parser supports documented patterns. These 25 trials do not demonstrate handling of arbitrary phrasing, every size format, or every possible service failure.
+- Passing the saved item into the outfit tool does not guarantee the model will include that item in its recommendation.
 
-
+Unit 4 is still in progress: the improvement, after-run evidence, and final comparison remain to be completed before submission.
 
 <!-- ═════════════════════════════════════════════════════════════════════
 

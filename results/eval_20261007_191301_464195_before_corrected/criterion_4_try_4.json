@@ -1,0 +1,26 @@
+{
+  "source": "tools.py::create_fit_card",
+  "new_item": {
+    "id": "lst_004",
+    "title": "90s Track Jacket — Navy/White Stripe",
+    "description": "Authentic 90s track jacket with stripe detail down the sleeves. Full zip. Lightweight — great for layering.",
+    "category": "outerwear",
+    "style_tags": [
+      "90s",
+      "vintage",
+      "athletic",
+      "streetwear"
+    ],
+    "size": "M",
+    "condition": "excellent",
+    "price": 45.0,
+    "colors": [
+      "navy",
+      "white"
+    ],
+    "brand": "Champion",
+    "platform": "poshmark"
+  },
+  "outfit": "Style this item with neutral colors and simple accessories.",
+  "fit_card": "Elevate your everyday streetwear by pairing the 90s Track Jacket — Navy/White Stripe with neutral tones and simple accessories for a clean, effortless look. This lightweight layer is available now on poshmark for $45.00."
+}
