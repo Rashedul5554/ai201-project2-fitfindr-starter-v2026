@@ -549,7 +549,7 @@ I used ChatGPT for implementation help, debugging, test design, and documentatio
 
 AI assistance also covered the tool specifications, stretch-feature plans, acceptance criteria 3–5 and criterion rationales, tool and planning-loop implementations, command-line changes, wardrobe persistence, and the saved-item check. For Unit 4, it covered MCP registration and integration, tracing, model-error handling, the evaluation runner, the fixed caption-detail test, evidence review, and README organization.
 
-I installed the changes and ran the checks documented here. The initial AI-provided persistence test omitted required dataset fixtures from its temporary directory. I preserved that failed evaluation, applied the correction, and reran all 25 trials. The error and correction are explained below. The proposed availability-prompt revision has not yet been verified with after-run evidence.
+I installed the changes and ran the checks documented here. The initial AI-provided persistence test omitted required dataset fixtures from its temporary directory. I preserved that failed evaluation, applied the correction, and reran all 25 trials. The error and correction are explained below. AI also helped score both after runs. Comparison of the saved caption-tool snapshots confirmed that the earlier run used the old prompt and the later run used the revision. The baseline and revised-run listing/outfit inputs were also compared and matched.
 
 ---
 
@@ -992,7 +992,7 @@ The agent then completed the query 'vintage graphic tee under $30, size M', sele
 
 ## The Improvement
 
-**Status: baseline recorded; prompt change and after results pending.** Fixing the persistence-test fixtures repaired the evaluation setup and is not counted as the agent improvement.
+**Status: caption prompt revision verified from saved snapshots; before/after results reviewed.** Fixing the persistence-test fixtures repaired the evaluation setup and is not counted as the agent improvement.
 
 ### Caption-detail baseline
 
@@ -1022,32 +1022,85 @@ Applying this new rule retrospectively to the preserved baseline gives **MISSED 
 
 The captions also did not explicitly attribute the price and platform to the dataset. Their original detail-check verdicts remain PASS.
 
-**Place and mechanism:** The issue occurs in the model output from `tools.py::create_fit_card`. The current prompt requests a natural social caption and prohibits invented availability, but does not explicitly identify the input as a mock dataset or require wording that attributes price and platform to it. The outputs show that the prohibition alone did not prevent live-marketplace language.
+**Place and mechanism:** The issue occurs in the model output from `tools.py::create_fit_card`. The baseline prompt requests a natural social caption and prohibits invented availability, but does not explicitly identify the input as a mock dataset or require wording that attributes price and platform to it. The outputs show that the prohibition alone did not prevent live-marketplace language.
 
-**Planned change:** Revise only the caption's system prompt to state that the data is a local mock dataset, require dataset attribution for price and platform, and explicitly prohibit availability claims and purchase invitations. Retain the exact-title, price, platform, sentence-count, and styling-detail requirements. This is a prompt-level attempt; its effectiveness still needs to be measured.
+**What I changed:** I revised only the system prompt in `tools.py::create_fit_card` to identify the source as a local mock dataset, require explicit dataset attribution for price and platform, and prohibit current-availability claims and purchase invitations. The revised prompt also asks for the color and clothing type of a supplied styling piece. The original title, price, platform, and sentence-count requirements remain in place.
 
 ### Run Log — After
 
-**Pending.** After changing the prompt, run:
+I ran both after-evaluation commands twice and retained every result. Comparing the saved caption-test implementations confirmed:
 
-```bash
-python -m py_compile tools.py
-python check_caption_details.py --label after
-python run_eval.py --label after
+- [23:51 tool snapshot](results/caption_details_20261007_235148_111926_after/tools_snapshot.py): the old prompt. This is an additional old-prompt run accidentally labeled `after`.
+- [23:59 tool snapshot](results/caption_details_20261007_235935_551239_after/tools_snapshot.py): the revised prompt with mock-dataset attribution and explicit restrictions on availability and purchase invitations.
+
+The primary caption comparison uses the original 23:31 baseline and the verified revised-prompt 23:59 run. Their five listing dictionaries, outfit suggestions, and expected detail lists match. The run selection is based on the saved implementation, not on which score is better. The extra old-prompt run remains available for review.
+
+The snapshots directly establish the code used by the caption tests. The full evaluation reports below record their trial outcomes but do not contain their own tool snapshots; I do not treat caption snapshots as direct proof of the code version in those separate processes.
+
+The two full evaluation reports both met all five original criteria. The following scores summarize the reviewed trial evidence; the generated reports originally left scoring cells blank.
+
+#### First evaluation
+
+[Full report](results/eval_20261007_235152_585566_after/report.md).
+
+| Criterion | Target | Try 1 | Try 2 | Try 3 | Try 4 | Try 5 | Verdict |
+|---|---|---|---|---|---|---|---|
+| 1. Matching query completes | 4 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 2. Impossible query stops | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 3. Selected item is preserved | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 4. Accurate short fit card | 4 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 5. Wardrobe persists across processes | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+
+#### Second evaluation
+
+[Full report](results/eval_20261008_000048_960205_after/report.md).
+
+| Criterion | Target | Try 1 | Try 2 | Try 3 | Try 4 | Try 5 | Verdict |
+|---|---|---|---|---|---|---|---|
+| 1. Matching query completes | 4 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 2. Impossible query stops | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 3. Selected item is preserved | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 4. Accurate short fit card | 4 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 5. Wardrobe persists across processes | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+
+**How the original criteria were scored:** In both reports, matching runs completed the required calls and returned fit cards without session errors. Impossible searches returned no listings and stopped before outfit generation with actionable messages. Full selected-item values matched the actual outfit-tool inputs. Each of the five caption trials met the sentence-count, title, price, and platform requirements. Each persistence trial preserved the added item's fields in saved data, loaded data, and the tool input, with different save and load process IDs.
+
+### Additional caption checks — separate run results
+
+Both caption reports passed the detail-retention check in all five trials. Their availability-wording results differed:
+
+- **23:51 old-prompt caption report:** Detail retention MET (5/5); availability wording MISSED (0/5). No caption explicitly attributed price and platform to the dataset. Examples include “available now,” “You can grab,” and “available right now.”
+- **23:59 revised-prompt caption report:** Detail retention MET (5/5); availability wording MET (5/5). Every caption explicitly attributed price and platform to the dataset and avoided current-availability claims and immediate-purchase invitations.
+
+Full caption reports: [extra old-prompt run](results/caption_details_20261007_235148_111926_after/report.md) and [verified revised-prompt run](results/caption_details_20261007_235935_551239_after/report.md).
+
+**Actual output excerpts, source `tools.py::create_fit_card`:**
+
+Extra old-prompt caption report (23:51), trial 2:
+
+```text
+Channel some serious early 2000s energy by styling the Y2K Baby Tee — Butterfly Print with wide-leg khaki trousers and a brown leather belt. This adorable top is available now on depop for $18.00. It is such a fun piece to add a touch of vintage charm to your everyday wardrobe.
 ```
 
-Use the same five listing/outfit pairs and the same scoring rules. Compare availability wording and detail retention against the saved baseline, then score all five original criteria in the same table format as Run Log — Before. Record any regressions and preserve the generated outputs unchanged. No improvement is claimed until those results have been reviewed.
+Verified revised-prompt caption report (23:59), trial 2:
+
+```text
+Embrace the early 2000s aesthetic with the Y2K Baby Tee — Butterfly Print, featuring a charming graphic and a fitted crop length. The dataset lists its price as $18.00 and its platform as depop. Try pairing this top with wide-leg khaki trousers to complete the look.
+```
+
+**Did it help?** On the same five fixed inputs, availability wording improved from **0/5 in the original baseline to 5/5 with the revised prompt**. Styling-detail retention remained **5/5**. All five revised captions explicitly attribute price and platform to the dataset and avoid immediate-purchase invitations and current-availability claims. Both full evaluation reports also met all five original criteria, 5/5 each. The caption snapshots support the measured prompt comparison; five successful captions do not guarantee the model will always follow the instruction. The new diagnostic was selected after examining the baseline and is reported as an exploratory improvement check, not as an original acceptance criterion.
 
 ---
 
 ## What's Still Broken
 
-- The original criteria all met their targets in this corrected baseline, but generated captions still imply live availability. Criterion 4, try 1 says “available now”; a local mock listing cannot establish that claim.
-- The additional five-input caption-detail check passed, but those same outputs failed the newly defined availability-wording check. The prompt revision and after evaluation are still pending.
-- Search uses keyword overlap and the query parser supports documented patterns. These 25 trials do not demonstrate handling of arbitrary phrasing, every size format, or every possible service failure.
-- Passing the saved item into the outfit tool does not guarantee the model will include that item in its recommendation.
+- The revised prompt passed the availability diagnostic on five fixed inputs, but this is a small sample. There is no deterministic output validator to prevent an unsupported claim in a future response. A next improvement would check attribution and prohibited claims before returning the caption.
+- All original criteria passed in both full evaluations. Those criteria do not explicitly test live availability; the additional diagnostic measures that behavior separately.
+- Full evaluation reports do not preserve tool snapshots. Future evaluation runs should record the code version alongside their evidence, as the caption test does.
+- Search uses keyword overlap and supports documented query patterns. These trials do not establish correct handling of every phrasing, size format, or service failure.
+- Delivery of a saved wardrobe item to the outfit tool does not guarantee the model will recommend that item.
 
-Unit 4 is still in progress: the improvement, after-run evidence, and final comparison remain to be completed before submission.
+The measured caption comparison is complete. Both old-prompt and revised-prompt outputs are preserved. Final repository verification, committing the implementation and results, and submitting the repository URL are separate steps.
 
 <!-- ═════════════════════════════════════════════════════════════════════
 

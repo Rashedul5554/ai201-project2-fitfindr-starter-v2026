@@ -1,0 +1,26 @@
+{
+  "source": "tools.py::create_fit_card",
+  "new_item": {
+    "id": "lst_005",
+    "title": "Corduroy Wide-Leg Pants — Rust",
+    "description": "Beautiful rust-colored cords in a wide-leg silhouette. High-waisted. Minor pilling on the seat but otherwise great condition.",
+    "category": "bottoms",
+    "style_tags": [
+      "vintage",
+      "cottagecore",
+      "70s",
+      "earth tones"
+    ],
+    "size": "W28",
+    "condition": "good",
+    "price": 32.0,
+    "colors": [
+      "rust",
+      "orange"
+    ],
+    "brand": null,
+    "platform": "depop"
+  },
+  "outfit": "Style this item with neutral colors and simple accessories.",
+  "fit_card": "Embrace rich autumn tones by styling the Corduroy Wide-Leg Pants — Rust with a simple cream knit sweater and delicate gold jewelry. These cozy high-waisted bottoms bring the ultimate vintage 70s aesthetic to your wardrobe. You can find this pair listed for $32.00 over on depop."
+}
