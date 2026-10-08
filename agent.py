@@ -16,7 +16,7 @@ Build and test your three tools in `tools.py` first. Then come here.
 import re
 import config
 import trace
-from tools import suggest_outfit, create_fit_card, compare_prices
+from tools import suggest_outfit, create_fit_card
 from mcp_client import call_tool
 from generate import ModelUnavailable
 
@@ -202,10 +202,10 @@ def run_agent(query: str, wardrobe: dict) -> dict:
                 stage = "compare"
     
             elif stage == "compare":
-                session["price_comparison"] = compare_prices(
-                    session["selected_item"]
+                session["price_comparison"] = call_tool(
+                    "compare_prices", {"new_item": session["selected_item"]}
                 )
-                trace.step("compare_prices", inputs=session["selected_item"],
+                trace.step("compare_prices (via MCP)", inputs=session["selected_item"],
                            returned=repr(session["price_comparison"]))
                 stage = "choose_styling"
     

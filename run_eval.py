@@ -33,7 +33,10 @@ def agent_trial(query, wardrobe):
     def search(name, arguments):
         evidence['calls'].append(name + ' (MCP)')
         result = original_search(name, arguments)
-        evidence['search_return'] = copy.deepcopy(result)
+        if name == 'search_listings':
+            evidence['search_return'] = copy.deepcopy(result)
+        elif name == 'compare_prices':
+            evidence['comparison_return'] = copy.deepcopy(result)
         return result
     def outfit(item, wardrobe):
         evidence['calls'].append('suggest_outfit')
