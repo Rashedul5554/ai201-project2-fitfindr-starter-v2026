@@ -1,0 +1,27 @@
+{
+  "source": "tools.py::create_fit_card",
+  "new_item": {
+    "id": "lst_003",
+    "title": "Oversized Flannel Shirt — Plaid Red/Black",
+    "description": "Classic oversized flannel. Great layering piece. A few tiny pulls in the fabric but nothing visible when worn.",
+    "category": "tops",
+    "style_tags": [
+      "grunge",
+      "vintage",
+      "flannel",
+      "streetwear",
+      "layering"
+    ],
+    "size": "XL (oversized)",
+    "condition": "good",
+    "price": 22.0,
+    "colors": [
+      "red",
+      "black"
+    ],
+    "brand": "Woolrich",
+    "platform": "thredUp"
+  },
+  "outfit": "Style this item with neutral colors and simple accessories.",
+  "fit_card": "Layering up with the Oversized Flannel Shirt — Plaid Red/Black is a great way to lean into a grunge aesthetic. Try pairing it with neutral colors and simple accessories to keep the look effortless. The dataset lists its price as $22.00 and its platform as thredUp."
+}
