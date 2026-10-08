@@ -990,6 +990,38 @@ The agent then completed the query 'vintage graphic tee under $30, size M', sele
 
 ---
 
+## Planned Unit 4 Bonus Work
+
+**Status: planned, not implemented or evaluated.** These plans are recorded before implementation. They supplement the required Unit 4 work and do not replace the original acceptance criteria. The Unit 3 stretch features documented earlier are separate from these Unit 4 plans.
+
+### 1. Expose a second tool through MCP
+
+I will register `compare_prices` in `mcp_server.py` and change the planning loop to call it through `mcp_client.call_tool`. The tool will continue to accept the selected listing and return `comparison_count`, `median_price`, and `price_difference`, including the existing empty-comparison behavior.
+
+I will compare direct and MCP results for a normal listing and an item with no comparison listings. A recorded agent trace will identify both `search_listings` and `compare_prices` as MCP calls.
+
+### 2. Retry an empty search once without the size filter
+
+When the initial search returns no listings and the request includes a size, the agent will retry once with `size=None`, keeping the description and maximum price unchanged. A search that already has no size filter will not retry.
+
+The trace and user-facing output will explain that the size filter was removed and that returned items may not match the requested size. If the retry also returns nothing, the agent will stop before outfit or caption generation. The retry will have an explicit one-attempt limit.
+
+I will record a query recovered by the retry and an impossible query that still stops. The original empty-search criterion remains unchanged. I will score it honestly and disclose any conflict or regression introduced by the new behavior rather than changing its original target.
+
+### 3. Measure a second improvement
+
+The first measured improvement addressed unsupported availability wording in captions. The second will measure whether the size-filter retry recovers otherwise unsuccessful searches.
+
+Before changing the search branch, I will define and commit five fixed queries whose requested sizes exclude otherwise matching listings. Each query must have at least one keyword match within budget when size is omitted. I will record the baseline inputs and actual outputs, then reuse the same queries after implementation.
+
+The additional target is recovery in at least 4 of 5 trials. A trial passes only if the initial size-filtered search is empty, exactly one retry removes only the size filter, a listing is recovered, and the user receives a clear size-relaxation notice. Every returned listing must respect the original price ceiling. The selected item must still be passed correctly to the downstream tools.
+
+I will preserve the before and after results, report whether the change helped, and rerun the five original acceptance criteria to check for regressions. The five-query recovery set deliberately tests size mismatches; it does not estimate success across all user requests.
+
+This is an additional diagnostic target, not a revision of the original five criteria. Implementing the retry alone does not establish the measured improvement; separate before/after evidence is required.
+
+---
+
 ## The Improvement
 
 **Status: caption prompt revision verified from saved snapshots; before/after results reviewed.** Fixing the persistence-test fixtures repaired the evaluation setup and is not counted as the agent improvement.
