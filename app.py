@@ -116,11 +116,15 @@ def _ask_one(query, wardrobe, use_trace):
     session = run_agent(query, wardrobe)
 
     print()
+    for notice in session.get("notices", []):
+        print(f"  Notice: {notice}")
+        print()
     if session["error"]:
         print(f"  {session['error']}")
     else:
         item = session["selected_item"] or {}
         print(f"  Found:    {item.get('title')} — ${item.get('price')} on {item.get('platform')}")
+        print(f"  Listing size: {item.get('size')}")
         print()
         comparison = session.get("price_comparison")
         if comparison is not None:

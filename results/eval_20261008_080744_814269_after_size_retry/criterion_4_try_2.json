@@ -1,0 +1,27 @@
+{
+  "source": "tools.py::create_fit_card",
+  "new_item": {
+    "id": "lst_002",
+    "title": "Y2K Baby Tee — Butterfly Print",
+    "description": "Super cute early 2000s baby tee with butterfly graphic. Fitted crop length. Tag says medium but fits like a small.",
+    "category": "tops",
+    "style_tags": [
+      "y2k",
+      "vintage",
+      "graphic tee",
+      "cottagecore"
+    ],
+    "size": "S/M",
+    "condition": "excellent",
+    "price": 18.0,
+    "colors": [
+      "white",
+      "pink",
+      "purple"
+    ],
+    "brand": null,
+    "platform": "depop"
+  },
+  "outfit": "Style this item with neutral colors and simple accessories.",
+  "fit_card": "The Y2K Baby Tee — Butterfly Print brings a nostalgic early 2000s vibe to any wardrobe. The dataset lists its price as $18.00 and its platform as depop. Style this piece with neutral colors and simple accessories for an effortless, balanced everyday look."
+}
