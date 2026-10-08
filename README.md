@@ -531,30 +531,25 @@ The fresh result removed the future-release claim but still said "available now.
 
 ## How I Used AI
 
+I used ChatGPT for implementation help, debugging, test design, and documentation. The examples below describe the assistance and how I checked it. Recorded outputs came from my terminal runs.
+
 ### Moment 1 — Implementing and checking search
 
-- **What I asked for:** I shared the starter files with ChatGPT and asked where to put the search implementation.
-- **What came back:** ChatGPT provided keyword scoring, size matching, and price filtering code, then helped identify indentation errors from my screenshots.
-- **What I changed:** I inserted the implementation in tools.py, corrected its indentation, and ran the syntax and search checks. The actual outputs are recorded above.
+- **What I asked for:** Help placing the search implementation in the starter code.
+- **What came back:** Keyword scoring, size matching, and price filtering code, plus help identifying indentation errors from screenshots.
+- **What I changed and checked:** I inserted the implementation in `tools.py`, corrected its indentation, and ran the syntax and search checks recorded above.
 
 ### Moment 2 — Reviewing generated captions
 
-- **What I asked for:** I shared three generated captions with ChatGPT and asked for the next step.
-- **What came back:** ChatGPT identified an unsupported release claim and suggested a prompt instruction against invented release dates, availability, scarcity, discounts, and urgency.
-- **What I changed:** I added the instruction and generated a fresh caption with caching disabled. I preserved the original results and the new result, including its remaining "available now" claim.
+- **What I asked for:** A review of three generated captions and advice on the next step.
+- **What came back:** Identification of an unsupported release claim and a proposed prompt instruction against invented availability, release dates, scarcity, discounts, and urgency.
+- **What I changed and checked:** I added the instruction and generated a fresh caption with caching disabled. I preserved both the original results and the new result, including its remaining “available now” claim.
 
-### Other AI assistance
+### Other assistance and verification
 
-ChatGPT also helped draft the tool specifications, bonus-feature plans, acceptance criteria 3–5 and the reasons under the criteria, and the outfit, caption, price-comparison, and planning-loop implementations, including the command-line price display and the explicit wardrobe-content branch. It also helped implement wardrobe saving and loading, update the command-line interface, and write the saved-item input check. It helped organize the terminal output into this README. The recorded outputs came from my terminal runs.
+AI assistance also covered the tool specifications, stretch-feature plans, acceptance criteria 3–5 and criterion rationales, tool and planning-loop implementations, command-line changes, wardrobe persistence, and the saved-item check. For Unit 4, it covered MCP registration and integration, tracing, model-error handling, the evaluation runner, the fixed caption-detail test, evidence review, and README organization.
 
-### Unit 4 — MCP and failure-handling assistance
-
-I shared the MCP client, agent, trace helper, and model adapter with ChatGPT. It prepared the MCP registration, changed the agent's search call, and added tracing and a handler for `ModelUnavailable`. I installed the updates and ran the direct-versus-MCP comparison and the four development checks recorded below. ChatGPT also helped place my actual outputs in this README. The corrected formal baseline is recorded below; a measured agent improvement and after evaluation are still pending. ChatGPT also prepared the evaluation runner and helped review all 25 evidence records. Its initial persistence test omitted the dataset fixtures from the temporary directory; that mistake and the correction are documented in Run Log — Before. It helped prepare the scoring and explanations in this README from the recorded outputs.
-
-<!-- ═══════════════════════ UNIT 4 — THE TEST ═══════════════════════
-
-     Don't fill these in during unit 3.
-     ═══════════════════════════════════════════════════════════════════ -->
+I installed the changes and ran the checks documented here. The initial AI-provided persistence test omitted required dataset fixtures from its temporary directory. I preserved that failed evaluation, applied the correction, and reran all 25 trials. The error and correction are explained below. The proposed availability-prompt revision has not yet been verified with after-run evidence.
 
 ---
 
@@ -781,7 +776,7 @@ These are excerpts from the saved JSON records, not additional terminal runs. Th
 
 **No original criterion was missed in the corrected baseline.** This does not establish that every behavior is correct. Criterion 4's quality bar is too limited: captions can meet the sentence and listing-fact requirements while giving generic styling advice or implying live availability. For example, its first trial says “available now,” which the mock dataset cannot verify. The existing criterion does not prohibit that wording, so the original verdict remains MET.
 
-**Proposed stricter check, not yet evaluated:** Across five fixed listing/outfit pairs with specific styling suggestions, at least four captions should retain a concrete styling detail from the supplied outfit. Record those inputs and their baseline outputs before changing the caption prompt, then use the same inputs afterward. This supplements the original criterion; it does not replace it or change its past score. The current caption trials supplied generic advice, so they cannot establish this new baseline.
+**Additional caption-detail check — MET (5/5), target 4/5.** I subsequently tested five fixed listing/outfit pairs with specific companion pieces and caching disabled. Each caption retained a supplied piece's color and clothing type. The evidence is recorded under The Improvement below. This check supplements the original criteria; it does not change their targets or verdicts. Since it already passed, detail retention is not the failure selected for improvement.
 
 ---
 
@@ -997,20 +992,58 @@ The agent then completed the query 'vintage graphic tee under $30, size M', sele
 
 ## The Improvement
 
-**Status: pending.** The corrected baseline is complete, but no post-baseline agent improvement or after evaluation has been recorded. Fixing the persistence test fixtures repaired the evaluation setup and is not counted here as an agent improvement.
+**Status: baseline recorded; prompt change and after results pending.** Fixing the persistence-test fixtures repaired the evaluation setup and is not counted as the agent improvement.
 
-**Proposed next step:** Record a baseline for the stricter caption-detail check described above, then make one focused change to the caption prompt. Keep the five inputs fixed so that before and after results can be compared.
+### Caption-detail baseline
+
+I ran `python check_caption_details.py --label before` with caching disabled. The five fixed listing/outfit pairs and unedited captions are saved in [the caption-detail report](results/caption_details_20261007_233127_495733_before/report.md). That directory also contains `evidence.json` and the tool implementation used in `tools_snapshot.py`. The baseline was committed as `869b9b3`.
+
+Target: at least 4 of 5 captions recommend a supplied companion piece while retaining its color and clothing type. Equivalent wording is allowed; generic advice does not count.
+
+1. **PASS:** “white ribbed tank top”
+2. **PASS:** “wide-leg khaki trousers”
+3. **PASS:** “black fitted turtleneck”
+4. **PASS:** “charcoal joggers”
+5. **PASS:** “cream cable-knit sweater”
+
+**Verdict: MET (5/5).** The baseline already preserves concrete styling details, so I am not claiming a failure on this check.
+
+### Availability wording check
+
+After reviewing those outputs, I added a separate diagnostic target: **5 of 5 captions must avoid claiming current availability or inviting an immediate purchase, and must attribute price and platform to the supplied dataset.** This target was chosen after seeing the outputs and before the planned prompt revision. It does not replace an original acceptance criterion.
+
+Applying this new rule retrospectively to the preserved baseline gives **MISSED (0/5)**:
+
+1. **FAIL:** “available now on depop”
+2. **FAIL:** “listed right now on depop”
+3. **FAIL:** “Grab this versatile piece”
+4. **FAIL:** “currently listed on poshmark”
+5. **FAIL:** “available now on depop”
+
+The captions also did not explicitly attribute the price and platform to the dataset. Their original detail-check verdicts remain PASS.
+
+**Place and mechanism:** The issue occurs in the model output from `tools.py::create_fit_card`. The current prompt requests a natural social caption and prohibits invented availability, but does not explicitly identify the input as a mock dataset or require wording that attributes price and platform to it. The outputs show that the prohibition alone did not prevent live-marketplace language.
+
+**Planned change:** Revise only the caption's system prompt to state that the data is a local mock dataset, require dataset attribution for price and platform, and explicitly prohibit availability claims and purchase invitations. Retain the exact-title, price, platform, sentence-count, and styling-detail requirements. This is a prompt-level attempt; its effectiveness still needs to be measured.
 
 ### Run Log — After
 
-Not run yet. After implementing the chosen improvement, rerun all five original criteria with caching disabled using `python run_eval.py --label after`, and also rerun the stricter check with its original inputs. Record the actual trial verdicts and whether the change helped, including any regressions.
+**Pending.** After changing the prompt, run:
+
+```bash
+python -m py_compile tools.py
+python check_caption_details.py --label after
+python run_eval.py --label after
+```
+
+Use the same five listing/outfit pairs and the same scoring rules. Compare availability wording and detail retention against the saved baseline, then score all five original criteria in the same table format as Run Log — Before. Record any regressions and preserve the generated outputs unchanged. No improvement is claimed until those results have been reviewed.
 
 ---
 
 ## What's Still Broken
 
 - The original criteria all met their targets in this corrected baseline, but generated captions still imply live availability. Criterion 4, try 1 says “available now”; a local mock listing cannot establish that claim.
-- The caption tests used generic outfit advice. They do not yet measure whether specific outfit details survive caption generation. The proposed stricter check and measured improvement remain pending.
+- The additional five-input caption-detail check passed, but those same outputs failed the newly defined availability-wording check. The prompt revision and after evaluation are still pending.
 - Search uses keyword overlap and the query parser supports documented patterns. These 25 trials do not demonstrate handling of arbitrary phrasing, every size format, or every possible service failure.
 - Passing the saved item into the outfit tool does not guarantee the model will include that item in its recommendation.
 
