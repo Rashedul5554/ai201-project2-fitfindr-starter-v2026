@@ -62,7 +62,7 @@ The implementation and development output are recorded below; these declarations
 
 ## What This Does
 
-FitFindr accepts clothing requests such as "a vintage graphic tee under $30, size M" and searches a local mock listings dataset. It selects a matching item, suggests outfits using the supplied wardrobe, and generates a short caption. If no listings match, it stops and suggests changing the description, size, or budget. It also compares the selected item with other same-category listings and displays their median price and the difference from the selected price. The planning loop chooses combinations from the supplied wardrobe when it contains items, or general styling advice when it is empty. Wardrobe changes can be saved locally and loaded by later queries.
+FitFindr accepts clothing requests such as "a vintage graphic tee under $30, size M" and searches a local mock listings dataset. It selects a matching item, suggests outfits using the supplied wardrobe, and generates a short caption. If the initial search is empty and a size was requested, it retries once without the size filter, preserving the description and budget and warning that recovered items may not fit. If no listings remain, it stops and suggests changing the description, size, or budget. It also compares the selected item with other same-category listings and displays their median price and the difference from the selected price. The planning loop chooses combinations from the supplied wardrobe when it contains items, or general styling advice when it is empty. Wardrobe changes can be saved locally and loaded by later queries.
 
 
 
@@ -130,15 +130,15 @@ This compares the local dataset, not market value. The agent calls it after sele
      The grader checks your code against what you claim here, so the file and
      function have to be real. -->
 
-**Branch rule:** If search_listings returns an empty list, save a message in the session suggesting that the user change the description, size, or budget, then stop without calling suggest_outfit or create_fit_card. Otherwise, save the first matching listing in the session as selected_item, call compare_prices with that item and save the comparison, then pass the saved item to suggest_outfit, save the outfit suggestion, and use the saved suggestion and item to call create_fit_card. Save the resulting fit card in the session.
+**Branch rule:** Search through MCP using the parsed description, size, and budget. If the first search is empty and a size was supplied, retry exactly once through MCP with only `size` changed to `None`. Record and display a notice explaining the relaxed size constraint. Without an initial size constraint, do not retry. If the final results are empty, save an actionable error and stop before outfit or caption generation. Otherwise, save the first result as `selected_item`, call `compare_prices` through MCP, choose the wardrobe styling path, and call `suggest_outfit` followed by `create_fit_card`, saving each result in the session. A model failure stops the remaining stages.
 
 **Where it lives:** `agent.py::run_agent`
 
 **How the query is parsed:** Regular expressions extract a price ceiling after “under,” “below,” or “up to,” and a size after “size.” Leading request phrases and commas are removed from the remaining text to form the search description. This parser supports these documented formats rather than arbitrary natural-language requests.
 
-**What moves through the session:** Parsed inputs are saved in `parsed`. Search results are saved in `search_results`, and the first result becomes `selected_item`. The price-comparison tool reads `selected_item` and saves its result in `price_comparison`. The wardrobe branch saves `styling_mode` as `wardrobe_combinations` or `general_advice`. The outfit tool reads `selected_item` and `wardrobe` from the session and saves its response in `outfit_suggestion`. The caption tool reads `outfit_suggestion` and `selected_item`, then saves its response in `fit_card`. An empty search sets `error` and stops the loop. Empty outfit or caption responses also set `error`.
+**What moves through the session:** Parsed inputs are saved in `parsed`. Search results are saved in `search_results`, and the first result becomes `selected_item`. The price-comparison tool reads `selected_item` and saves its result in `price_comparison`. The wardrobe branch saves `styling_mode` as `wardrobe_combinations` or `general_advice`. The outfit tool reads `selected_item` and `wardrobe` from the session and saves its response in `outfit_suggestion`. The caption tool reads `outfit_suggestion` and `selected_item`, then saves its response in `fit_card`. An empty final search sets `error` and stops the loop. `search_attempts` records the searches, `size_retry_count` limits the retry to one, and `notices` records the size-relaxation warning; `parsed` retains the original request. Empty outfit or caption responses also set `error`.
 
-**Loop control:** The loop advances through `parse`, `search`, `compare`, and `choose_styling`, then either `outfit` or `general_advice`, and finally `caption`. An empty search stops at the search stage. It calls `trace.check_iterations()` on each iteration to enforce the configured iteration limit.
+**Loop control:** The loop advances through `parse`, `search`, `compare`, and `choose_styling`, then either `outfit` or `general_advice`, and finally `caption`. The size retry occurs within the search stage; an empty final search stops there. It calls `trace.check_iterations()` on each iteration to enforce the configured iteration limit.
 
 **Wardrobe persistence:** `app.py::cmd_wardrobe_add` loads the current wardrobe, adds an item with a unique ID, and calls `utils/data_loader.py::save_wardrobe` to save it in `data/my_wardrobe.json`. Normal queries load that file through `load_saved_wardrobe` and pass the wardrobe to `run_agent`. If no saved file exists, the example wardrobe is used. `--empty-wardrobe` uses the empty template for that query without overwriting the saved file.
 
@@ -782,6 +782,8 @@ These are excerpts from the saved JSON records, not additional terminal runs. Th
 
 ## Loop Trace
 
+The traces below are historical runs before the second MCP tool and size retry. Their output is preserved unchanged. Current behavior and later evidence are recorded under Unit 4 Bonus Results below.
+
 <!-- One full run, printed step by step, with the MCP call visible in it.
 
      `python app.py ask '...' --trace` once you've added the trace.step()
@@ -990,9 +992,9 @@ The agent then completed the query 'vintage graphic tee under $30, size M', sele
 
 ---
 
-## Planned Unit 4 Bonus Work
+## Unit 4 Bonus Work — Original Plans and Results
 
-**Status: planned, not implemented or evaluated.** These plans are recorded before implementation. They supplement the required Unit 4 work and do not replace the original acceptance criteria. The Unit 3 stretch features documented earlier are separate from these Unit 4 plans.
+**Current status:** The second MCP tool and one-time size retry are implemented. The recovery diagnostic improved from 0/5 to 5/5; later end-to-end evaluations still contain model-service failures, documented below. These original plans were recorded before implementation and are retained in future tense as historical declarations. They supplement the required Unit 4 work and do not replace the original acceptance criteria. The Unit 3 stretch features documented earlier are separate from these Unit 4 plans.
 
 ### 1. Expose a second tool through MCP
 
@@ -1124,15 +1126,81 @@ Embrace the early 2000s aesthetic with the Y2K Baby Tee — Butterfly Print, fea
 
 ---
 
+## Unit 4 Bonus Results
+
+### Second tool exposed through MCP
+
+`mcp_server.py` registers both `search_listings` and `compare_prices`, and `agent.py::run_agent` calls both through `mcp_client.call_tool`. The evaluation wrapper records the comparison separately from search results so it does not overwrite search evidence.
+
+[Verification output](results/second_mcp_tool_check.txt) records direct-versus-MCP equality for a normal listing and an empty comparison case. The normal case returned count 9, median $30.00, and difference $8.00 through both paths. The empty case returned count 0 and `None` for median and difference. The recorded agent trace identifies both tools as MCP calls. Implementation and verification were committed as `ef67f00`.
+
+### Second measured improvement — one size retry
+
+The check was committed before implementation (`021cff8`), and the baseline evidence was committed as `c011c5b`. The five fixed queries request size XXS for graphic tees, flannel, track jackets, corduroy, and jeans, with unchanged respective budgets of $30, $30, $50, $40, and $50.
+
+Target: at least 4/5 recover a listing after exactly one retry removing only size, with a clear notice, every recovered listing within the original budget, and the selected item passed unchanged to the outfit tool. This measures search recovery and input delivery, not successful completion of the model calls.
+
+- [Before report](results/size_retry_20261008_005827_385619_before/report.md): **0/5, MISSED**. The agent stopped after the strict search. Separate relaxed fixture results establish that matching items existed; they are not agent recovery successes.
+- [After report](results/size_retry_20261008_080615_859612_after/report.md): **5/5, MET**. Every trial made exactly one retry with only size removed, preserved the budget, recorded the notice, and delivered the selected item unchanged to the outfit tool.
+
+**Place and mechanism:** `agent.py::run_agent` previously stopped on an empty size-filtered result even when otherwise matching listings existed. The new conditional retry changes that branch. `app.py` displays the notice even without tracing and displays the selected listing's size. These are alternatives that may not fit the requested size, not exact size matches.
+
+**Completion limitation:** Only 1/5 of those after trials completed a fit card. Trials 1–3 failed at outfit generation and trial 5 failed at caption generation. Those failures do not erase the recorded recovery, but recovery must not be presented as 5/5 end-to-end completion. The impossible ballgown query still returned no results after its retry and stopped before model calls.
+
+### Run Log — After Size Retry
+
+[Full uncached report](results/eval_20261008_080744_814269_after_size_retry/report.md). The original five criteria and targets are unchanged.
+
+| Criterion | Target | Try 1 | Try 2 | Try 3 | Try 4 | Try 5 | Verdict |
+|---|---|---|---|---|---|---|---|
+| 1. Matching query completes | 4 of 5 | FAIL | PASS | FAIL | PASS | PASS | MISSED (3/5) |
+| 2. Impossible query stops | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 3. Selected item is preserved | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 4. Accurate short fit card | 4 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 5. Wardrobe persists across processes | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+
+**Diagnosis of the miss:** Criterion 1 trial 1 failed in `create_fit_card`; trial 3 failed in `suggest_outfit`. The agent recorded model-unavailable errors and no completed fit card. Its generic error text did not preserve the provider cause, so these particular failures cannot be attributed conclusively to a specific provider status. Input-preservation criteria are scored from captured input values, independently of later model completion.
+
+### Run Log — Follow-up After Size Retry
+
+Source: the preserved generated report titled **Evaluation — after_size_retry_followup**, with caching disabled. This is an additional complete run, not a replacement for the preceding failed run. The reviewed verdicts below supplement the originally blank report scoring cells.
+
+| Criterion | Target | Try 1 | Try 2 | Try 3 | Try 4 | Try 5 | Verdict |
+|---|---|---|---|---|---|---|---|
+| 1. Matching query completes | 4 of 5 | FAIL | PASS | PASS | PASS | PASS | MET (4/5) |
+| 2. Impossible query stops | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 3. Selected item is preserved | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 4. Accurate short fit card | 4 of 5 | FAIL | PASS | PASS | FAIL | FAIL | MISSED (2/5) |
+| 5. Wardrobe persists across processes | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+
+**Diagnosis of the miss:** Criterion 4 trials 1, 4, and 5 failed in `tools.py::create_fit_card` when `generate.py::generate` raised `ModelUnavailable` after provider `503 UNAVAILABLE` errors. The recorded provider message was:
+
+```text
+This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.
+```
+
+The model adapter explicitly retries rate-limit errors but does not explicitly retry these 503 responses. No caption was returned for those trials, so all three count as FAIL. Trials 2 and 3 returned three-sentence captions with the exact title, correct price, and platform once each. Criterion 1 trial 1 also failed at outfit generation, but its generic session error does not establish the same provider cause.
+
+Criteria 3 and 5 pass on the recorded field equality and, for persistence, separate save/load processes. A later model error does not change whether the required item reached the outfit tool unchanged. These passes do not imply successful captions for every such trial.
+
+A separate `AI201_CACHE=0 python test.py` environment check passed all ten checks, including a model response. That establishes a successful call at that moment; the repeated-run evidence demonstrates intermittent failures remain.
+
+**Overall interpretation:** The fixed size-mismatch set improved from 0/5 to 5/5 recovery. The original acceptance evaluations after this change were mixed: the first missed criterion 1 and the follow-up missed criterion 4. All runs remain evidence; scores are not combined across runs or selected to produce an all-pass result. Bonus credit is subject to the course grading review.
+
+---
+
 ## What's Still Broken
 
-- The revised prompt passed the availability diagnostic on five fixed inputs, but this is a small sample. There is no deterministic output validator to prevent an unsupported claim in a future response. A next improvement would check attribution and prohibited claims before returning the caption.
-- All original criteria passed in both full evaluations. Those criteria do not explicitly test live availability; the additional diagnostic measures that behavior separately.
-- Full evaluation reports do not preserve tool snapshots. Future evaluation runs should record the code version alongside their evidence, as the caption test does.
-- Search uses keyword overlap and supports documented query patterns. These trials do not establish correct handling of every phrasing, size format, or service failure.
+- Model-service availability is unreliable across repeated uncached calls. The latest follow-up missed criterion 4 at 2/5 because three requests returned provider 503 high-demand errors. Earlier all-pass evaluations remain historical results, not proof that the current system always meets every target.
+- `generate.py::generate` retries rate-limit errors but does not explicitly retry transient 503 responses. A possible future improvement is bounded retry with backoff for transient service errors, while preserving the final error if attempts are exhausted. That improvement has not been implemented or measured here.
+- The agent's model-failure message recommends checking connectivity and the API key but hides the underlying provider error. It can therefore be misleading during a provider outage. Future error reporting should preserve useful status information without exposing credentials.
+- Removing size recovers alternatives that may not fit. The displayed notice is essential, and the five fixed mismatch queries do not estimate recovery across all requests.
+- The caption availability diagnostic passed on five fixed inputs, but there is no deterministic output validator to prevent future unsupported claims. The original acceptance criteria do not explicitly test live availability.
+- Full evaluation reports do not preserve tool snapshots. Future evaluations should record the code version alongside their evidence, as the dedicated caption and size-retry checks do.
+- Search uses keyword overlap and documented query patterns. These trials do not establish correct handling of every phrasing or size format.
 - Delivery of a saved wardrobe item to the outfit tool does not guarantee the model will recommend that item.
 
-The measured caption comparison is complete. Both old-prompt and revised-prompt outputs are preserved. Final repository verification, committing the implementation and results, and submitting the repository URL are separate steps.
+The README records both measured improvements and the remaining failed targets. Raw generated outputs and earlier runs are retained unchanged. Repository synchronization and course submission are separate steps.
 
 <!-- ═════════════════════════════════════════════════════════════════════
 
